@@ -297,6 +297,84 @@ body {
   .shutter-overlay { display: none !important; }
 }
 
+/* Pour transition (Match → Grade)
+   A picker mock mirrors the player's lock-in state, the pad reticle travels
+   to the target's H/S position, both reticles ignite with a white halo, and
+   solid colour discs scale up from each thumb position to cover the screen. */
+.pour-overlay { position: absolute; inset: 0; z-index: 1000; pointer-events: none; }
+.pour-picker {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px;
+  padding-top: calc(24px + env(safe-area-inset-top));
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
+  gap: 18px;
+  z-index: 3;
+}
+.pour-pad {
+  width: 100%; max-width: 360px; max-height: 380px;
+  flex: 1 1 0;
+  border-radius: 16px;
+  border: 1px solid rgba(236, 230, 218, 0.18);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+.pour-slider {
+  width: 100%; max-width: 360px;
+  height: 56px;
+  border-radius: 16px;
+  border: 1px solid rgba(236, 230, 218, 0.18);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+.pour-reticle,
+.pour-thumb {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid var(--paper);
+  outline: 1px solid var(--ink);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 4;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.4);
+  will-change: top, left, box-shadow, background;
+  transition: top 360ms cubic-bezier(0.4, 0, 0.2, 1),
+              left 360ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 220ms ease-out,
+              background 360ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pour-reticle { width: 26px; height: 26px; }
+.pour-thumb   { width: 34px; height: 34px; top: 50%; }
+.pour-reticle.pour-ignite,
+.pour-thumb.pour-ignite {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45),
+              0 0 32px 12px rgba(255, 255, 255, 0.85);
+}
+.pour-region {
+  position: absolute; left: 0; right: 0; height: 50%; overflow: hidden;
+  z-index: 5;
+  pointer-events: none;
+}
+.pour-region-top { top: 0; }
+.pour-region-bot { bottom: 0; }
+.pour-disc {
+  position: absolute;
+  width: 30px; height: 30px; border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 1100ms cubic-bezier(0.2, 0.65, 0.2, 1);
+  will-change: transform;
+}
+.pour-disc.pour-grow {
+  transform: translate(-50%, -50%) scale(60);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pour-overlay { display: none !important; }
+}
+
 /* Native range input theming */
 input[type="range"] {
   -webkit-appearance: none;

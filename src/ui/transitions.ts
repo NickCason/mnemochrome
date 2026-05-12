@@ -8,6 +8,8 @@
 // prefers-reduced-motion collapses every transition to an immediate swap
 // with no overlay or animation.
 
+import type { HSL } from '../color';
+
 export interface TransitionHandle {
   /** Resolves once the overlay has been fully removed. */
   done: Promise<void>;
@@ -256,6 +258,182 @@ export function washBloomTransition(
       swapOnce();
       if (bloom) bloom.remove();
       wash.remove();
+    },
+  };
+}
+
+export interface PourContext {
+  /** The actual target the player tried to recall (HSL). */
+  target: HSL;
+  /** What the player picked (HSL). */
+  guess: HSL;
+  targetHex: string;
+  guessHex: string;
+}
+
+function padGradient(l: number): string {
+  const neutral = `hsl(0, 0%, ${l}%)`;
+  return [
+    `linear-gradient(to bottom, transparent 0%, ${neutral} 100%)`,
+    `linear-gradient(to right,
+      hsl(0,100%,${l}%) 0%,
+      hsl(60,100%,${l}%) 16.66%,
+      hsl(120,100%,${l}%) 33.33%,
+      hsl(180,100%,${l}%) 50%,
+      hsl(240,100%,${l}%) 66.66%,
+      hsl(300,100%,${l}%) 83.33%,
+      hsl(360,100%,${l}%) 100%)`,
+  ].join(', ');
+}
+
+function sliderGradient(h: number, s: number): string {
+  return `linear-gradient(to right, #000 0%, hsl(${h}, ${s}%, 50%) 50%, #fff 100%)`;
+}
+
+/**
+ * Pour: a picker mock mirrors the player's pick; the pad reticle smoothly
+ * travels to the target's H/S position; both reticles ignite with a white
+ * halo; solid color discs scale up from each thumb position to cover the
+ * screen. Use for Match → Grade — the only transition that carries
+ * gameplay context (the player's guess vs the actual target).
+ *
+ * onSwap fires once the pour has fully covered the viewport, so the grade
+ * scene mounts behind the now-opaque overlay and is revealed when the
+ * overlay is removed.
+ */
+export function pourTransition(
+  root: HTMLElement,
+  ctx: PourContext,
+  onSwap: () => void,
+  duration = 2400,
+): TransitionHandle {
+  if (prefersReducedMotion()) return instantSwap(onSwap);
+
+  // Phase markers (ms), tuned for a 2400ms total. Adjust by scaling.
+  const scale = duration / 2400;
+  const HOLD_END = 220 * scale;        // initial picker hold
+  const TRAVEL_START = HOLD_END;
+  const IGNITE_AT = 1000 * scale;      // both reticles flare
+  const POUR_AT = 1100 * scale;        // discs begin growing
+  const SWAP_AT = duration * 0.92;     // discs have visually covered the band
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pour-overlay';
+
+  // Picker mock — same layout proportions as the live match scene's picker.
+  const picker = document.createElement('div');
+  picker.className = 'pour-picker';
+
+  const pad = document.createElement('div');
+  pad.className = 'pour-pad';
+  pad.style.background = padGradient(ctx.guess.l);
+
+  const reticle = document.createElement('div');
+  reticle.className = 'pour-reticle';
+  reticle.style.left = `${(ctx.guess.h / 360) * 100}%`;
+  reticle.style.top = `${(1 - ctx.guess.s / 100) * 100}%`;
+  reticle.style.background = ctx.guessHex; // lens fill, matches live picker
+  pad.appendChild(reticle);
+
+  const slider = document.createElement('div');
+  slider.className = 'pour-slider';
+  slider.style.background = sliderGradient(ctx.guess.h, ctx.guess.s);
+
+  const thumb = document.createElement('div');
+  thumb.className = 'pour-thumb';
+  thumb.style.left = `${(ctx.guess.l / 100) * 100}%`;
+  thumb.style.background = ctx.guessHex;
+  slider.appendChild(thumb);
+
+  picker.appendChild(pad);
+  picker.appendChild(slider);
+
+  const regionTop = document.createElement('div');
+  regionTop.className = 'pour-region pour-region-top';
+  const discTop = document.createElement('div');
+  discTop.className = 'pour-disc';
+  discTop.style.background = ctx.targetHex;
+  regionTop.appendChild(discTop);
+
+  const regionBot = document.createElement('div');
+  regionBot.className = 'pour-region pour-region-bot';
+  const discBot = document.createElement('div');
+  discBot.className = 'pour-disc';
+  discBot.style.background = ctx.guessHex;
+  regionBot.appendChild(discBot);
+
+  overlay.appendChild(picker);
+  overlay.appendChild(regionTop);
+  overlay.appendChild(regionBot);
+  root.appendChild(overlay);
+
+  let swapped = false;
+  const swapOnce = () => {
+    if (swapped) return;
+    swapped = true;
+    onSwap();
+  };
+
+  const timers: number[] = [];
+  const later = (ms: number, fn: () => void) => {
+    timers.push(window.setTimeout(fn, ms));
+  };
+
+  // Travel: reticle slides from guess H/S to target H/S. Reticle's lens fill
+  // also crossfades to the target color so the destination dot reads as
+  // "this is where you should have been".
+  later(TRAVEL_START, () => {
+    reticle.style.left = `${(ctx.target.h / 360) * 100}%`;
+    reticle.style.top = `${(1 - ctx.target.s / 100) * 100}%`;
+    reticle.style.background = ctx.targetHex;
+  });
+
+  // Ignite: white halos on both reticles.
+  later(IGNITE_AT, () => {
+    reticle.classList.add('pour-ignite');
+    thumb.classList.add('pour-ignite');
+  });
+
+  // Pour: position discs at thumb screen coords, then grow.
+  later(POUR_AT, () => {
+    const rootRect = root.getBoundingClientRect();
+    const padRect = pad.getBoundingClientRect();
+    const sliderRect = slider.getBoundingClientRect();
+    const halfH = rootRect.height / 2;
+
+    const reticleX = padRect.left + (ctx.target.h / 360) * padRect.width - rootRect.left;
+    const reticleY = padRect.top + (1 - ctx.target.s / 100) * padRect.height - rootRect.top;
+    const thumbX = sliderRect.left + (ctx.guess.l / 100) * sliderRect.width - rootRect.left;
+    const thumbY = sliderRect.top + sliderRect.height / 2 - rootRect.top;
+
+    discTop.style.left = `${reticleX}px`;
+    discTop.style.top = `${reticleY}px`;
+    discBot.style.left = `${thumbX}px`;
+    discBot.style.top = `${thumbY - halfH}px`;
+
+    requestAnimationFrame(() => {
+      discTop.classList.add('pour-grow');
+      discBot.classList.add('pour-grow');
+    });
+  });
+
+  // Swap once pours have covered the screen.
+  later(SWAP_AT, swapOnce);
+
+  const done = new Promise<void>((resolve) => {
+    later(duration + 60, () => {
+      swapOnce(); // safety
+      overlay.remove();
+      resolve();
+    });
+  });
+
+  return {
+    done,
+    cancel: () => {
+      timers.forEach(clearTimeout);
+      swapOnce();
+      overlay.remove();
     },
   };
 }

@@ -6,6 +6,7 @@
 
 import { scoreMatch } from '../color';
 import { loadState, recordRound } from '../state';
+import { shareRound } from '../ui/share-card';
 
 export function mountGrade(
   root: HTMLElement,
@@ -48,12 +49,19 @@ export function mountGrade(
   share.style.cssText =
     'position:absolute;right:24px;top:calc(24px + env(safe-area-inset-top));';
   share.addEventListener('click', async () => {
-    const text = `Mnemochrome — ${pct}% match (target ${targetHex} → guess ${guessHex})`;
-    const nav = navigator as Navigator & { share?: (data: { text: string }) => Promise<void> };
-    if (typeof nav.share === 'function') {
-      try { await nav.share({ text }); } catch {}
-    } else {
-      try { await navigator.clipboard.writeText(text); } catch {}
+    if (share.disabled) return;
+    share.disabled = true;
+    const label = share.textContent;
+    share.textContent = '...';
+    try {
+      await shareRound(targetHex, guessHex, pct);
+    } catch {
+      // Errors thrown synchronously by the share helper (e.g. canvas init
+      // failure) shouldn't strand the UI. Silent fallback — the button just
+      // re-enables.
+    } finally {
+      share.disabled = false;
+      share.textContent = label ?? 'Share';
     }
   });
 

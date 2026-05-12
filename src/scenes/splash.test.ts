@@ -27,3 +27,33 @@ describe('pickSplashHsl', () => {
     }
   });
 });
+
+import { shouldSkipSplash } from './splash';
+
+describe('shouldSkipSplash', () => {
+  const setMatchMedia = (matches: boolean) => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: (q: string) => ({
+        matches,
+        media: q,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
+  };
+
+  it('returns true when prefers-reduced-motion: reduce matches', () => {
+    setMatchMedia(true);
+    expect(shouldSkipSplash()).toBe(true);
+  });
+
+  it('returns false when prefers-reduced-motion does not match', () => {
+    setMatchMedia(false);
+    expect(shouldSkipSplash()).toBe(false);
+  });
+});

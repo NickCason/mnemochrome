@@ -20,3 +20,11 @@ export function pickSplashHsl(): HSL {
   const l = 50 + Math.random() * 5;
   return { h, s, l };
 }
+
+/**
+ * Splash is bypassed entirely under OS-level Reduce Motion. The goal of
+ * splash is brand/polish, both of which yield to user preference.
+ */
+export function shouldSkipSplash(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}

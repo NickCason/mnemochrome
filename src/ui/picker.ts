@@ -2,6 +2,10 @@
 // 2D pad (hue × saturation) + lightness slider. Pad shows a hue×sat map at the
 // current lightness; slider shows a black→current→white gradient at the current
 // hue/sat. The parent element's background tracks the live full HSL pick.
+//
+// The pad is height-capped (and width-capped) so the picker doesn't fill the
+// whole screen; the match scene reserves space below for the Lock In button
+// via this component's own bottom padding.
 
 import type { HSL } from '../color';
 import { hslToHex } from '../color';
@@ -20,18 +24,25 @@ export function mountPicker(
   const state: HSL = { ...initial };
 
   const root = document.createElement('div');
-  root.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;padding:24px;gap:16px;padding-bottom:calc(24px + env(safe-area-inset-bottom));padding-top:calc(24px + env(safe-area-inset-top));';
+  root.style.cssText =
+    'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:18px;' +
+    'padding-top:calc(24px + env(safe-area-inset-top));' +
+    'padding-bottom:calc(112px + env(safe-area-inset-bottom));'; // reserve room for Lock In button
 
   const pad = document.createElement('div');
-  pad.style.cssText = 'flex:1;position:relative;touch-action:none;overflow:hidden;border-radius:16px;border:1px solid rgba(236,230,218,0.18);';
+  pad.style.cssText =
+    'flex:1 1 0;width:100%;max-width:360px;max-height:380px;position:relative;touch-action:none;overflow:hidden;border-radius:16px;border:1px solid var(--glass-border, rgba(236,230,218,0.18));box-shadow:0 6px 24px rgba(0,0,0,0.35);';
   const padCross = document.createElement('div');
-  padCross.style.cssText = 'position:absolute;width:24px;height:24px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:2;';
+  padCross.style.cssText =
+    'position:absolute;width:26px;height:26px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:2;box-shadow:0 0 0 1px rgba(0,0,0,0.4);';
   pad.appendChild(padCross);
 
   const slider = document.createElement('div');
-  slider.style.cssText = 'height:64px;position:relative;touch-action:none;overflow:hidden;border-radius:16px;border:1px solid rgba(236,230,218,0.18);';
+  slider.style.cssText =
+    'width:100%;max-width:360px;height:56px;position:relative;touch-action:none;overflow:hidden;border-radius:16px;border:1px solid var(--glass-border, rgba(236,230,218,0.18));box-shadow:0 6px 24px rgba(0,0,0,0.35);';
   const sliderThumb = document.createElement('div');
-  sliderThumb.style.cssText = 'position:absolute;top:50%;width:36px;height:36px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;background:transparent;transform:translate(-50%,-50%);pointer-events:none;z-index:2;';
+  sliderThumb.style.cssText =
+    'position:absolute;top:50%;width:34px;height:34px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;background:transparent;transform:translate(-50%,-50%);pointer-events:none;z-index:2;box-shadow:0 0 0 1px rgba(0,0,0,0.4);';
   slider.appendChild(sliderThumb);
 
   root.appendChild(pad);
@@ -39,8 +50,6 @@ export function mountPicker(
   parent.appendChild(root);
 
   function padGradient(l: number): string {
-    // Horizontal hue spectrum × vertical saturation falloff to a neutral at lightness L.
-    // Stacking order: vertical (top) overlay, horizontal hue (bottom).
     const neutral = `hsl(0, 0%, ${l}%)`;
     return [
       `linear-gradient(to bottom, transparent 0%, ${neutral} 100%)`,
@@ -56,7 +65,6 @@ export function mountPicker(
   }
 
   function sliderGradient(h: number, s: number): string {
-    // Black → fully-saturated color at L=50% → white.
     return `linear-gradient(to right, #000 0%, hsl(${h}, ${s}%, 50%) 50%, #fff 100%)`;
   }
 

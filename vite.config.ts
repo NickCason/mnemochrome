@@ -1,11 +1,25 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { execSync } from 'node:child_process';
+
+const BUILD_SHA = (() => {
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return 'dev';
+  }
+})();
 
 export default defineConfig({
   base: '/mnemochrome/',
   server: { host: '0.0.0.0', port: 5173 },
   test: { environment: 'jsdom' },
+  define: {
+    __BUILD_SHA__: JSON.stringify(BUILD_SHA),
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -26,7 +40,15 @@ export default defineConfig({
           { src: 'icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Force the new service worker to activate immediately and take over
+        // open tabs so PWA users get the latest build on next launch — no
+        // dance of close-tab/reopen required.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+      },
     }),
   ],
 });

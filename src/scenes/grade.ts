@@ -39,7 +39,7 @@ export function mountGrade(
   next.className = 'btn-primary';
   next.textContent = 'Next';
   next.style.cssText =
-    'position:absolute;left:24px;right:24px;bottom:calc(24px + env(safe-area-inset-bottom));';
+    'position:absolute;left:50%;transform:translateX(-50%);width:calc(100% - 48px);max-width:360px;bottom:calc(24px + env(safe-area-inset-bottom));';
   next.addEventListener('click', onNext);
 
   const share = document.createElement('button');

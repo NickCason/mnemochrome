@@ -19,7 +19,7 @@ export function mountMatch(
   btn.className = 'btn-primary';
   btn.textContent = 'Lock In';
   btn.style.cssText =
-    'position:absolute;left:24px;right:24px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:10;';
+    'position:absolute;left:50%;transform:translateX(-50%);width:calc(100% - 48px);max-width:360px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:10;';
   btn.addEventListener('click', () => {
     if (loadState().settings.haptics && 'vibrate' in navigator) navigator.vibrate(10);
     onLockIn(picker.getHex());

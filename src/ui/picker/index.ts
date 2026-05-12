@@ -9,6 +9,10 @@ import { trueColor } from './render';
 export interface PickerHandle {
   getHex: () => string;
   getHSL: () => HSL;
+  /** Wrapper around readout + labels + tapes capsule. Exposed so the match
+   *  scene can slide it off-screen during the lock-in transition while the
+   *  swatch stays put. */
+  controlsEl: HTMLElement;
   destroy: () => void;
 }
 
@@ -38,6 +42,16 @@ export function mountPicker(
   ].join(';');
   root.appendChild(swatch);
 
+  // Controls wrapper — readout + axis labels + tapes capsule. Grouped so the
+  // match scene can slide the whole bottom region off in one transform during
+  // the lock-in transition while the swatch stays put.
+  const controls = document.createElement('div');
+  controls.style.cssText = [
+    'display:flex',
+    'flex-direction:column',
+    'will-change:transform',
+  ].join(';');
+
   const readout = document.createElement('div');
   readout.style.cssText = [
     'padding:10px 0 6px',
@@ -48,7 +62,7 @@ export function mountPicker(
     "font-feature-settings:'tnum'",
     'letter-spacing:0.04em',
   ].join(';');
-  root.appendChild(readout);
+  controls.appendChild(readout);
 
   const labels = document.createElement('div');
   labels.style.cssText = 'display:flex;padding:0 28px 8px;';
@@ -60,7 +74,7 @@ export function mountPicker(
     labels.appendChild(span);
     span.textContent = text;
   }
-  root.appendChild(labels);
+  controls.appendChild(labels);
 
   // Unified tapes container — one rounded capsule wrapping all three tapes,
   // with a horizontal selection band overlay spanning all three at the
@@ -97,7 +111,8 @@ export function mountPicker(
   ].join(';');
   tapesWrap.appendChild(band);
 
-  root.appendChild(tapesWrap);
+  controls.appendChild(tapesWrap);
+  root.appendChild(controls);
   parent.appendChild(root);
 
   const hapticsEnabled = loadState().settings.haptics;
@@ -150,6 +165,7 @@ export function mountPicker(
   return {
     getHex: () => hslToHex(state),
     getHSL: () => ({ ...state }),
+    controlsEl: controls,
     destroy: () => {
       tapes.forEach((t) => t.destroy());
       magnifier.destroy();

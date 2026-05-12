@@ -5,12 +5,12 @@ import { mountTitle } from './scenes/title';
 import { mountReveal } from './scenes/reveal';
 import { mountMatch } from './scenes/match';
 import { mountGrade } from './scenes/grade';
-import { hslToHex, hexToHsl, randomTarget, type HSL } from './color';
+import { hslToHex, randomTarget, type HSL } from './color';
 import {
   bloomTransition,
   shutterTransition,
   washBloomTransition,
-  pourTransition,
+  lockInTransition,
   type TransitionHandle,
 } from './ui/transitions';
 
@@ -84,10 +84,10 @@ function match(target: HSL, targetHex: string) {
 }
 
 function grade(target: HSL, targetHex: string, guessHex: string) {
-  const guess = hexToHsl(guessHex);
+  void target; // HSL retained for future pour-style transitions; unused here
   go(
     () => mountGrade(root, targetHex, guessHex, () => goReveal('grade')),
-    (r, onSwap) => pourTransition(r, { target, guess, targetHex, guessHex }, onSwap),
+    (r, onSwap) => lockInTransition(r, { targetHex, guessHex }, onSwap),
   );
 }
 

@@ -437,3 +437,104 @@ export function pourTransition(
     },
   };
 }
+
+export interface LockInContext {
+  targetHex: string;
+  guessHex: string;
+}
+
+/**
+ * Lock-in: phase B of the Match→Grade hand-off. The match scene has already
+ * slid its controls + Lock In button off the bottom (phase A, in match.ts)
+ * and tinted its root to the guess colour, so the screen is currently a flat
+ * field of the guess colour when this transition starts.
+ *
+ * Here we slide a target-coloured band down from above the screen so it
+ * covers the top half — establishing the target / guess split that the grade
+ * scene will mount into. After the slide lands, onSwap fires, the grade
+ * scene mounts behind the overlay (its own top/bot bands match the overlay's
+ * final state, so removing the overlay is invisible), and the grade card's
+ * existing scale-in / cascade choreography plays as phase C.
+ */
+export function lockInTransition(
+  root: HTMLElement,
+  ctx: LockInContext,
+  onSwap: () => void,
+  duration = 580,
+): TransitionHandle {
+  if (prefersReducedMotion()) return instantSwap(onSwap);
+
+  const SLIDE_MS = 320;
+  const SWAP_AT = SLIDE_MS + 20;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:1000;pointer-events:none;overflow:hidden;';
+
+  // Target band — top half of the screen, drops in from above.
+  const target = document.createElement('div');
+  target.style.cssText = [
+    'position:absolute',
+    'left:0',
+    'right:0',
+    'top:0',
+    'height:50%',
+    `background:${ctx.targetHex}`,
+    'transform:translateY(-100%)',
+    `transition:transform ${SLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+    'will-change:transform',
+    'box-shadow:0 6px 14px rgba(0,0,0,0.25)',
+  ].join(';');
+  overlay.appendChild(target);
+
+  // Guess base — the bottom half of the screen during the transition. The
+  // match scene's tinted root already shows this colour, but we paint it on
+  // the overlay too so there's no flicker if the underlying scene unmounts
+  // mid-frame.
+  const guessBase = document.createElement('div');
+  guessBase.style.cssText = [
+    'position:absolute',
+    'left:0',
+    'right:0',
+    'bottom:0',
+    'height:50%',
+    `background:${ctx.guessHex}`,
+    'z-index:-1',
+  ].join(';');
+  overlay.appendChild(guessBase);
+
+  root.appendChild(overlay);
+
+  // Kick off the slide on the next frame so the initial transform is committed.
+  requestAnimationFrame(() => {
+    target.style.transform = 'translateY(0%)';
+  });
+
+  let swapped = false;
+  const swapOnce = () => {
+    if (swapped) return;
+    swapped = true;
+    onSwap();
+  };
+  const t1 = window.setTimeout(swapOnce, SWAP_AT);
+
+  let t2 = 0;
+  const done = new Promise<void>((resolve) => {
+    t2 = window.setTimeout(() => {
+      swapOnce();
+      requestAnimationFrame(() => {
+        overlay.remove();
+        resolve();
+      });
+    }, duration);
+  });
+
+  return {
+    done,
+    cancel: () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      swapOnce();
+      overlay.remove();
+    },
+  };
+}

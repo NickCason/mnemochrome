@@ -243,14 +243,14 @@ body {
 @keyframes shutterTop {
   0%   { transform: translateY(-100%); animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
   22%  { transform: translateY(0);     animation-timing-function: steps(1, end); }
-  52%  { transform: translateY(0);     animation-timing-function: cubic-bezier(0.2, 0.85, 0.25, 1); }
+  52%  { transform: translateY(0);     animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
   74%  { transform: translateY(-100%); animation-timing-function: steps(1, end); }
   100% { transform: translateY(-100%); }
 }
 @keyframes shutterBot {
   0%   { transform: translateY(100%); animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
   23%  { transform: translateY(0);    animation-timing-function: steps(1, end); }
-  54%  { transform: translateY(0);    animation-timing-function: cubic-bezier(0.2, 0.85, 0.25, 1); }
+  54%  { transform: translateY(0);    animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
   76%  { transform: translateY(100%); animation-timing-function: steps(1, end); }
   100% { transform: translateY(100%); }
 }

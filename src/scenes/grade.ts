@@ -54,7 +54,7 @@ export function mountGrade(
   const card = document.createElement('div');
   card.className = 'glass';
   card.style.cssText =
-    'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:22px 28px 18px;text-align:center;min-width:280px;display:flex;flex-direction:column;align-items:center;gap:14px;';
+    'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:22px 28px 18px;text-align:center;min-width:280px;display:flex;flex-direction:column;align-items:center;gap:14px;background:rgba(14,14,16,0.82);';
 
   const num = document.createElement('div');
   num.style.cssText =
@@ -73,6 +73,7 @@ export function mountGrade(
       'display:flex;flex-direction:column;align-items:center;gap:4px;min-width:64px;';
     const lab = document.createElement('div');
     lab.className = 'label-micro';
+    lab.style.color = 'var(--paper)';
     lab.textContent = label;
     const val = document.createElement('div');
     val.style.cssText =
@@ -199,13 +200,16 @@ export function mountGrade(
 }
 
 function swatchChip(label: string, hex: string, hsl: HSL): HTMLElement {
+  // Override the default .glass opacity (0.55) with a much more opaque ink
+  // background so labels/values stay legible on any underlying swatch hue.
   const chip = document.createElement('div');
   chip.className = 'glass';
   chip.style.cssText =
-    'padding:10px 16px;display:flex;flex-direction:column;align-items:center;gap:4px;';
+    'padding:10px 16px;display:flex;flex-direction:column;align-items:center;gap:4px;background:rgba(14,14,16,0.82);';
 
   const lab = document.createElement('div');
   lab.className = 'label-micro';
+  lab.style.color = 'var(--paper)';
   lab.textContent = label;
 
   const hexEl = document.createElement('div');
@@ -218,7 +222,7 @@ function swatchChip(label: string, hex: string, hsl: HSL): HTMLElement {
   const hStr = hsl.s < 1.5 ? '—' : `${Math.round(hsl.h)}°`;
   const hslEl = document.createElement('div');
   hslEl.style.cssText =
-    "font-family:'Inter Variable',system-ui,sans-serif;font-size:12px;color:var(--mute);font-feature-settings:'tnum';";
+    "font-family:'Inter Variable',system-ui,sans-serif;font-size:12px;color:rgba(236,230,218,0.80);font-feature-settings:'tnum';";
   hslEl.textContent = `H ${hStr} · S ${Math.round(hsl.s)}% · L ${Math.round(hsl.l)}%`;
 
   chip.appendChild(lab);

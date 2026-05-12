@@ -1,0 +1,71 @@
+:root {
+  --ink: #0E0E10;
+  --paper: #ECE6DA;
+  --mute: #7A7670;
+  --accent: #C2185B;
+  --glass-bg: rgba(14, 14, 16, 0.55);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: 'Inter Variable', system-ui, sans-serif;
+}
+
+#app {
+  width: 100vw;
+  height: 100dvh;
+  position: relative;
+}
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-radius: 16px;
+}
+
+.wordmark {
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  font-size: 48px;
+  color: var(--paper);
+}
+
+.wordmark .o {
+  color: var(--accent);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--paper);
+  border: none;
+  border-radius: 12px;
+  padding: 16px 24px;
+  font: inherit;
+  font-weight: 600;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--paper);
+  border: none;
+  padding: 16px 24px;
+  font: inherit;
+}

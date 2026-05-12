@@ -1,4 +1,6 @@
-import { formatHex, parse, differenceCiede2000 } from 'culori';
+import { formatHex, parse, differenceCiede2000, converter } from 'culori';
+
+const toHsl = converter('hsl');
 
 export type HSL = { h: number; s: number; l: number };
 export type RGB = { r: number; g: number; b: number };
@@ -33,4 +35,45 @@ export function scoreMatch(targetHex: string, guessHex: string): number {
   const d = deltaE(a, b);
   const pct = 100 * (1 - d / 50);
   return Math.max(0, Math.min(100, Math.round(pct)));
+}
+
+export function hexToHsl(hex: string): HSL {
+  const c = toHsl(hex);
+  if (!c) return { h: 0, s: 0, l: 0 };
+  return {
+    h: c.h ?? 0,
+    s: (c.s ?? 0) * 100,
+    l: (c.l ?? 0) * 100,
+  };
+}
+
+export interface AxisCloseness {
+  hue: number;       // 0..100
+  saturation: number;
+  lightness: number;
+}
+
+// Per-axis closeness for the grade breakdown. Hue is circular, so distance is
+// the shorter way around the wheel (max 180°). Sat and lightness are linear
+// 0..100. When either color is effectively achromatic (s < 1.5%), hue is
+// reported as 100 — chromatic distance between two near-grays is not
+// meaningful and shouldn't be penalized.
+export function axisCloseness(targetHex: string, guessHex: string): AxisCloseness {
+  const t = hexToHsl(targetHex);
+  const g = hexToHsl(guessHex);
+
+  let hue = 100;
+  if (t.s > 1.5 && g.s > 1.5) {
+    const raw = Math.abs(t.h - g.h);
+    const dH = Math.min(raw, 360 - raw);
+    hue = clamp01(1 - dH / 180);
+  }
+
+  const saturation = clamp01(1 - Math.abs(t.s - g.s) / 100);
+  const lightness = clamp01(1 - Math.abs(t.l - g.l) / 100);
+  return { hue, saturation, lightness };
+}
+
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(100, Math.round(v * 100)));
 }

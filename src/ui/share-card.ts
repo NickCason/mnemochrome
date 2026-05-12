@@ -5,6 +5,8 @@
 // the entire card is drawn to an offscreen canvas, so any chrome that happens
 // to be on screen (e.g. the Share button itself) cannot leak into the export.
 
+import { axisCloseness } from '../color';
+
 const PAPER = '#ECE6DA';
 const MUTE = '#7A7670';
 const ACCENT = '#C2185B';
@@ -21,8 +23,10 @@ async function ensureFontsLoaded(): Promise<void> {
   // doesn't guarantee a particular size is rasterized.
   await Promise.all([
     document.fonts.load(`400 200px ${FRAUNCES}`),
+    document.fonts.load(`400 56px ${FRAUNCES}`),
     document.fonts.load(`400 44px ${FRAUNCES}`),
-    document.fonts.load(`500 28px ${INTER}`),
+    document.fonts.load(`500 26px ${INTER}`),
+    document.fonts.load(`500 22px ${INTER}`),
     document.fonts.load(`400 22px ${INTER}`),
   ]);
   await document.fonts.ready;
@@ -90,9 +94,11 @@ export async function renderShareCard(
   ctx.fillStyle = guessHex;
   ctx.fillRect(0, H / 2, W, H / 2);
 
-  // Glass card centered across the split.
-  const cardW = 720;
-  const cardH = 560;
+  const axes = axisCloseness(targetHex, guessHex);
+
+  // Glass card centered across the split — taller now to host axis breakdown.
+  const cardW = 760;
+  const cardH = 760;
   const cardX = (W - cardW) / 2;
   const cardY = (H - cardH) / 2;
   const radius = 36;
@@ -114,28 +120,50 @@ export async function renderShareCard(
   ctx.fillText(`${pct}%`, W / 2, cardY + 180);
 
   // Hex codes, target → guess.
-  ctx.font = `500 28px ${INTER}`;
+  ctx.font = `500 26px ${INTER}`;
   ctx.fillStyle = MUTE;
   const arrowLine = `${targetHex.toUpperCase()}    →    ${guessHex.toUpperCase()}`;
   ctx.fillText(arrowLine, W / 2, cardY + 320);
 
-  // Divider rule.
-  ctx.strokeStyle = 'rgba(236, 230, 218, 0.16)';
+  // First divider rule (above axis stats).
+  ctx.strokeStyle = 'rgba(236, 230, 218, 0.14)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(cardX + 100, cardY + 380);
-  ctx.lineTo(cardX + cardW - 100, cardY + 380);
+  ctx.moveTo(cardX + 80, cardY + 380);
+  ctx.lineTo(cardX + cardW - 80, cardY + 380);
+  ctx.stroke();
+
+  // Axis stats row: HUE / SAT / LIGHT
+  const axisY = cardY + 470;
+  const axisLabels = ['HUE', 'SAT', 'LIGHT'] as const;
+  const axisValues = [axes.hue, axes.saturation, axes.lightness];
+  const colWidth = cardW / 3;
+  for (let i = 0; i < 3; i++) {
+    const cx = cardX + colWidth * (i + 0.5);
+    ctx.fillStyle = MUTE;
+    ctx.font = `500 22px ${INTER}`;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(axisLabels[i], cx, axisY - 24);
+    ctx.fillStyle = PAPER;
+    ctx.font = `400 56px ${FRAUNCES}`;
+    ctx.fillText(`${axisValues[i]}%`, cx, axisY + 24);
+  }
+
+  // Second divider rule (above wordmark).
+  ctx.beginPath();
+  ctx.moveTo(cardX + 80, cardY + 580);
+  ctx.lineTo(cardX + cardW - 80, cardY + 580);
   ctx.stroke();
 
   // Wordmark.
-  drawWordmark(ctx, W / 2, cardY + 460, 44);
+  drawWordmark(ctx, W / 2, cardY + 660, 44);
 
   // URL.
   ctx.font = `400 22px ${INTER}`;
   ctx.fillStyle = MUTE;
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'center';
-  ctx.fillText(URL_TEXT, W / 2, cardY + 510);
+  ctx.fillText(URL_TEXT, W / 2, cardY + 710);
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(

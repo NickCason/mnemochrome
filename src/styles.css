@@ -136,6 +136,42 @@ body {
   font-feature-settings: 'tnum';
 }
 
+/* Grade card landing — entry scale-up, ≥90% pulse, 100% headline flare */
+@keyframes gradeCardEnter {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.grade-card-enter { animation: gradeCardEnter 320ms cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+
+@keyframes gradeCardPulse {
+  0%   { transform: translate(-50%, -50%) scale(1);
+         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+         border-color: var(--glass-border); }
+  35%  { transform: translate(-50%, -50%) scale(1.045);
+         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 36px 6px rgba(194, 24, 91, 0.65);
+         border-color: rgba(194, 24, 91, 0.7); }
+  100% { transform: translate(-50%, -50%) scale(1);
+         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+         border-color: var(--glass-border); }
+}
+.grade-card-pulse { animation: gradeCardPulse 620ms cubic-bezier(0.2, 0.8, 0.25, 1); }
+
+@keyframes gradeNumFlare {
+  0%   { color: var(--paper); text-shadow: none; }
+  18%  { color: var(--accent); text-shadow: 0 0 36px rgba(194, 24, 91, 0.9); }
+  60%  { color: var(--accent); text-shadow: 0 0 18px rgba(194, 24, 91, 0.5); }
+  100% { color: var(--paper); text-shadow: none; }
+}
+.grade-num-flare { animation: gradeNumFlare 720ms cubic-bezier(0.2, 0.8, 0.25, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .grade-card-enter,
+  .grade-card-pulse,
+  .grade-num-flare {
+    animation: none !important;
+  }
+}
+
 /* Native range input theming */
 input[type="range"] {
   -webkit-appearance: none;

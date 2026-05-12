@@ -1,12 +1,25 @@
 // src/scenes/grade.ts
 // Grade scene: target color top half, guess bottom half. A glass card on the
-// split line shows the ΔE2000 percentage with a 600ms count-up, plus a row of
-// per-axis closeness scores (hue / saturation / lightness). Next advances the
-// loop; Share renders a curated PNG via the share-card helper.
+// split line shows the headline % with a "Thunk + stagger" landing — headline
+// counts up smooth ease-out then lands, then HUE → SAT → LIGHT cascade in.
+// On ≥90% the card scale-pulses with a magenta border glow. On 100% the
+// headline text washes magenta. prefers-reduced-motion collapses all of this
+// to an instant final state.
 
 import { scoreMatch, axisCloseness, hexToHsl, type HSL } from '../color';
 import { loadState, recordRound } from '../state';
 import { shareRound } from '../ui/share-card';
+
+// Staggered landing timeline (ms from scene mount).
+const TIMING = {
+  headline: { from: 0,    to: 900 },
+  hue:      { from: 640,  to: 1340 },
+  sat:      { from: 820,  to: 1520 },
+  light:    { from: 1000, to: 1700 },
+  pulseAt:  1700,
+  pulseDur: 620,
+  flareDur: 720,
+} as const;
 
 export function mountGrade(
   root: HTMLElement,
@@ -18,7 +31,8 @@ export function mountGrade(
   const pct = scoreMatch(targetHex, guessHex);
   const axes = axisCloseness(targetHex, guessHex);
   recordRound(pct);
-  if (loadState().settings.haptics && 'vibrate' in navigator) navigator.vibrate(30);
+  const haptic = loadState().settings.haptics && 'vibrate' in navigator;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const top = document.createElement('div');
   top.style.cssText = `position:absolute;top:0;left:0;right:0;height:50%;background:${targetHex};`;
@@ -120,22 +134,66 @@ export function mountGrade(
   root.appendChild(next);
   root.appendChild(share);
 
-  const start = performance.now();
-  const DUR = 600;
+  // Reduced motion: skip the count-up and post-land flourishes, show final
+  // values immediately, fire haptic now.
+  if (reduced) {
+    num.textContent = `${pct}%`;
+    hueCell.setValue(axes.hue);
+    satCell.setValue(axes.saturation);
+    lightCell.setValue(axes.lightness);
+    if (haptic) navigator.vibrate(30);
+    return () => {
+      root.innerHTML = '';
+    };
+  }
+
+  // Card scale-in entrance (CSS keyframes, ends at scale(1)).
+  card.classList.add('grade-card-enter');
+
+  // Single rAF loop computing each value's piecewise ease-out within its window.
+  const startT = performance.now();
+  const valueAt = (target: number, from: number, to: number, elapsed: number): number => {
+    if (elapsed <= from) return 0;
+    if (elapsed >= to) return target;
+    const p = (elapsed - from) / (to - from);
+    return Math.round((1 - Math.pow(1 - p, 3)) * target);
+  };
   let raf = 0;
   const tick = (t: number) => {
-    const p = Math.min(1, (t - start) / DUR);
-    const eased = 1 - Math.pow(1 - p, 3);
-    num.textContent = `${Math.round(eased * pct)}%`;
-    hueCell.setValue(Math.round(eased * axes.hue));
-    satCell.setValue(Math.round(eased * axes.saturation));
-    lightCell.setValue(Math.round(eased * axes.lightness));
-    if (p < 1) raf = requestAnimationFrame(tick);
+    const elapsed = t - startT;
+    num.textContent = `${valueAt(pct, TIMING.headline.from, TIMING.headline.to, elapsed)}%`;
+    hueCell.setValue(valueAt(axes.hue,        TIMING.hue.from,   TIMING.hue.to,   elapsed));
+    satCell.setValue(valueAt(axes.saturation, TIMING.sat.from,   TIMING.sat.to,   elapsed));
+    lightCell.setValue(valueAt(axes.lightness, TIMING.light.from, TIMING.light.to, elapsed));
+    if (elapsed < TIMING.light.to) raf = requestAnimationFrame(tick);
   };
   raf = requestAnimationFrame(tick);
 
+  // Side effects scheduled by the timeline: haptic + 100% flare sync to
+  // headline land; ≥90% card pulse syncs to last axis land.
+  const timers: number[] = [];
+  const after = (ms: number, fn: () => void) => {
+    timers.push(window.setTimeout(fn, ms));
+  };
+
+  after(TIMING.headline.to, () => {
+    if (haptic) navigator.vibrate(30);
+    if (pct === 100) {
+      num.classList.add('grade-num-flare');
+      after(TIMING.flareDur, () => num.classList.remove('grade-num-flare'));
+    }
+  });
+
+  if (pct >= 90) {
+    after(TIMING.pulseAt, () => {
+      card.classList.add('grade-card-pulse');
+      after(TIMING.pulseDur, () => card.classList.remove('grade-card-pulse'));
+    });
+  }
+
   return () => {
     cancelAnimationFrame(raf);
+    timers.forEach((t) => clearTimeout(t));
     root.innerHTML = '';
   };
 }

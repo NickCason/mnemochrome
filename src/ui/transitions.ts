@@ -101,24 +101,42 @@ export function bloomTransition(
  * retract. Use for Reveal → Match where the metaphor is "eyes close, memory
  * imprints, eyes open on the new task".
  *
- * onSwap fires at the closed moment (the held centre of the animation), so
- * the picker has been mounted by the time the bars open.
+ * The bars are driven by a single rAF loop (not CSS keyframes) so the open
+ * phase is guaranteed to produce visible per-frame motion regardless of any
+ * CSS animation gotchas or asset caching. The seam/dot accent flash still
+ * uses its own CSS keyframes (independent of the bars).
+ *
+ * onSwap fires while the bars are still fully closed so the match scene
+ * mounts behind the ink before the open phase starts.
  */
 export function shutterTransition(
   root: HTMLElement,
   onSwap: () => void,
-  duration = 2200,
+  duration = 2000,
 ): TransitionHandle {
   if (prefersReducedMotion()) return instantSwap(onSwap);
+
+  // Phase boundaries as fractions of total duration.
+  const CLOSE_END = 0.20;
+  const HOLD_END = 0.38;
+  const OPEN_END = 0.82;
+  // Easing for the close — slow then snap to centre.
+  const easeInCubic = (t: number) => t * t * t;
+  // Open is linear so the motion is unambiguously visible end-to-end.
 
   const overlay = document.createElement('div');
   overlay.className = 'shutter-overlay';
 
   const top = document.createElement('div');
   top.className = 'shutter-bar shutter-bar-top';
+  // Disable CSS animation; we drive transform from JS.
+  top.style.animation = 'none';
+  top.style.transform = 'translateY(-100%)';
 
   const bot = document.createElement('div');
   bot.className = 'shutter-bar shutter-bar-bot';
+  bot.style.animation = 'none';
+  bot.style.transform = 'translateY(100%)';
 
   const seam = document.createElement('div');
   seam.className = 'shutter-seam';
@@ -129,11 +147,8 @@ export function shutterTransition(
   const dotR = document.createElement('div');
   dotR.className = 'shutter-dot shutter-dot-r';
 
-  // All animations share the configured duration. The 60ms stagger on the
-  // right o-dot is preserved as an animation-delay so the two dots feel
-  // independent rather than ringing in unison.
   const dur = `${duration}ms`;
-  [top, bot, seam, dotL, dotR].forEach((el) => {
+  [seam, dotL, dotR].forEach((el) => {
     el.style.animationDuration = dur;
   });
   dotR.style.animationDelay = '60ms';
@@ -145,21 +160,55 @@ export function shutterTransition(
   overlay.appendChild(dotR);
   root.appendChild(overlay);
 
-  // Swap when bars are fully closed (the held middle of the animation,
-  // matching the 22%/52% close/open keyframe split).
-  const swapDelay = Math.floor(duration * 0.34);
+  // Drive the bar transforms manually. Linear open phase, so the bars peel
+  // back at a steady rate the eye can track from t=HOLD_END to t=OPEN_END.
+  const start = performance.now();
+  let rafId = 0;
+  const tick = (now: number) => {
+    const p = Math.min(1, (now - start) / duration);
+    let topY: number; // percent — translateY(${topY}%)
+    let botY: number;
+    if (p <= CLOSE_END) {
+      const k = easeInCubic(p / CLOSE_END);
+      topY = -100 + 100 * k;
+      botY = 100 - 100 * k;
+    } else if (p <= HOLD_END) {
+      topY = 0;
+      botY = 0;
+    } else if (p <= OPEN_END) {
+      const k = (p - HOLD_END) / (OPEN_END - HOLD_END);
+      topY = -100 * k;
+      botY = 100 * k;
+    } else {
+      topY = -100;
+      botY = 100;
+    }
+    top.style.transform = `translateY(${topY}%)`;
+    bot.style.transform = `translateY(${botY}%)`;
+    if (p < 1) rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+
+  // Swap mid-hold so match is mounted before the bars start opening. The
+  // scenes' mount functions wipe root.innerHTML, which detaches our overlay
+  // mid-animation — re-append it immediately after so the open phase is
+  // visible to the user (without this the screen jumped instantly from
+  // ink-covered to fully revealed picker, the bug we're fixing).
+  const swapDelay = Math.floor(duration * ((CLOSE_END + HOLD_END) / 2));
   let swapped = false;
   const swapOnce = () => {
     if (swapped) return;
     swapped = true;
     onSwap();
+    root.appendChild(overlay);
   };
   const swapTimer = window.setTimeout(swapOnce, swapDelay);
 
   let removeTimer = 0;
   const done = new Promise<void>((resolve) => {
     removeTimer = window.setTimeout(() => {
-      swapOnce(); // safety
+      swapOnce();
+      cancelAnimationFrame(rafId);
       overlay.remove();
       resolve();
     }, duration);
@@ -170,6 +219,7 @@ export function shutterTransition(
     cancel: () => {
       clearTimeout(swapTimer);
       clearTimeout(removeTimer);
+      cancelAnimationFrame(rafId);
       swapOnce();
       overlay.remove();
     },

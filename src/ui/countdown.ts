@@ -1,39 +1,78 @@
 // src/ui/countdown.ts
-// Renders a thin paper-colored rectangle outline inside `parent` that retracts
-// (stroke-dashoffset animates from 0 to its full pathLength) over `durationMs`
-// and calls `onDone` when finished. Returns a cleanup function that cancels
-// the animation, clears the timer, and removes the SVG.
+// Edge-ring countdown: a paper-colored rounded-rect outline traced around the
+// viewport that retracts to nothing over durationMs, then calls onDone.
+//
+// The outline is a rounded path (not a sharp rect) and is inset from the
+// screen edges so it doesn't get clipped by iOS's rounded display corners
+// or the home indicator. Path length is normalized to 1000 so the
+// stroke-dashoffset transition is aspect-independent. The path rebuilds on
+// resize/orientation change without interrupting the offset animation.
+
+const INSET = 10;           // pixels in from each edge — clears iOS corner radius
+const CORNER_RADIUS = 36;   // visual roundness of the ring's own corners
+const PATH_LENGTH = 1000;   // normalized animation length
+
+function buildRoundedRectPath(w: number, h: number): string {
+  const inset = INSET;
+  const r = Math.min(CORNER_RADIUS, (w - 2 * inset) / 2, (h - 2 * inset) / 2);
+  const x1 = inset;
+  const y1 = inset;
+  const x2 = w - inset;
+  const y2 = h - inset;
+  return (
+    `M ${x1 + r} ${y1} ` +
+    `H ${x2 - r} ` +
+    `A ${r} ${r} 0 0 1 ${x2} ${y1 + r} ` +
+    `V ${y2 - r} ` +
+    `A ${r} ${r} 0 0 1 ${x2 - r} ${y2} ` +
+    `H ${x1 + r} ` +
+    `A ${r} ${r} 0 0 1 ${x1} ${y2 - r} ` +
+    `V ${y1 + r} ` +
+    `A ${r} ${r} 0 0 1 ${x1 + r} ${y1} ` +
+    `Z`
+  );
+}
 
 export function mountCountdown(
   parent: HTMLElement,
   durationMs: number,
   onDone: () => void
 ): () => void {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;');
-  svg.setAttribute('viewBox', '0 0 100 100');
-  svg.setAttribute('preserveAspectRatio', 'none');
 
-  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  rect.setAttribute('x', '1');
-  rect.setAttribute('y', '1');
-  rect.setAttribute('width', '98');
-  rect.setAttribute('height', '98');
-  rect.setAttribute('fill', 'none');
-  rect.setAttribute('stroke', 'var(--paper)');
-  rect.setAttribute('stroke-width', '0.6');
-  rect.setAttribute('vector-effect', 'non-scaling-stroke');
-  rect.setAttribute('pathLength', '1000');
-  rect.setAttribute('stroke-dasharray', '1000');
-  rect.setAttribute('stroke-dashoffset', '0');
-  rect.style.transition = `stroke-dashoffset ${durationMs}ms linear`;
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', 'var(--paper)');
+  path.setAttribute('stroke-width', '2');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('vector-effect', 'non-scaling-stroke');
+  path.setAttribute('pathLength', String(PATH_LENGTH));
+  path.setAttribute('stroke-dasharray', String(PATH_LENGTH));
+  path.setAttribute('stroke-dashoffset', '0');
+  path.style.transition = `stroke-dashoffset ${durationMs}ms linear`;
 
-  svg.appendChild(rect);
+  function sync() {
+    const w = parent.clientWidth || window.innerWidth;
+    const h = parent.clientHeight || window.innerHeight;
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    path.setAttribute('d', buildRoundedRectPath(w, h));
+  }
+
+  sync();
+  svg.appendChild(path);
   parent.appendChild(svg);
 
-  // Trigger the animation on next frame so the transition actually applies.
+  // Rebuild on size change (orientation, browser chrome show/hide). Because
+  // the dasharray is fixed at PATH_LENGTH and pathLength normalizes the path,
+  // changing `d` mid-animation does not interrupt the visual retraction.
+  const resize = new ResizeObserver(sync);
+  resize.observe(parent);
+
+  // Kick off retraction on next frame so the transition actually applies.
   const raf = requestAnimationFrame(() => {
-    rect.setAttribute('stroke-dashoffset', '1000');
+    path.setAttribute('stroke-dashoffset', String(PATH_LENGTH));
   });
 
   const timer = window.setTimeout(onDone, durationMs);
@@ -41,6 +80,7 @@ export function mountCountdown(
   return () => {
     cancelAnimationFrame(raf);
     clearTimeout(timer);
+    resize.disconnect();
     svg.remove();
   };
 }

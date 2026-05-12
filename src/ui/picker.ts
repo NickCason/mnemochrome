@@ -1,6 +1,7 @@
 // src/ui/picker.ts
-// 2D pad (hue × saturation) + lightness slider. Updates the parent's background
-// to the current HSL on every change. Calls onChange with a hex string.
+// 2D pad (hue × saturation) + lightness slider. Pad shows a hue×sat map at the
+// current lightness; slider shows a black→current→white gradient at the current
+// hue/sat. The parent element's background tracks the live full HSL pick.
 
 import type { HSL } from '../color';
 import { hslToHex } from '../color';
@@ -22,26 +23,48 @@ export function mountPicker(
   root.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;padding:24px;gap:16px;padding-bottom:calc(24px + env(safe-area-inset-bottom));padding-top:calc(24px + env(safe-area-inset-top));';
 
   const pad = document.createElement('div');
-  pad.className = 'glass';
-  pad.style.cssText = 'flex:1;position:relative;touch-action:none;overflow:hidden;';
+  pad.style.cssText = 'flex:1;position:relative;touch-action:none;overflow:hidden;border-radius:16px;border:1px solid rgba(236,230,218,0.18);';
   const padCross = document.createElement('div');
-  padCross.style.cssText = 'position:absolute;width:24px;height:24px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;';
+  padCross.style.cssText = 'position:absolute;width:24px;height:24px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:2;';
   pad.appendChild(padCross);
 
   const slider = document.createElement('div');
-  slider.className = 'glass';
-  slider.style.cssText = 'height:64px;position:relative;touch-action:none;';
+  slider.style.cssText = 'height:64px;position:relative;touch-action:none;overflow:hidden;border-radius:16px;border:1px solid rgba(236,230,218,0.18);';
   const sliderThumb = document.createElement('div');
-  sliderThumb.style.cssText = 'position:absolute;top:50%;width:36px;height:36px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;background:transparent;transform:translate(-50%,-50%);pointer-events:none;';
+  sliderThumb.style.cssText = 'position:absolute;top:50%;width:36px;height:36px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;background:transparent;transform:translate(-50%,-50%);pointer-events:none;z-index:2;';
   slider.appendChild(sliderThumb);
 
   root.appendChild(pad);
   root.appendChild(slider);
   parent.appendChild(root);
 
+  function padGradient(l: number): string {
+    // Horizontal hue spectrum × vertical saturation falloff to a neutral at lightness L.
+    // Stacking order: vertical (top) overlay, horizontal hue (bottom).
+    const neutral = `hsl(0, 0%, ${l}%)`;
+    return [
+      `linear-gradient(to bottom, transparent 0%, ${neutral} 100%)`,
+      `linear-gradient(to right,
+        hsl(0,100%,${l}%) 0%,
+        hsl(60,100%,${l}%) 16.66%,
+        hsl(120,100%,${l}%) 33.33%,
+        hsl(180,100%,${l}%) 50%,
+        hsl(240,100%,${l}%) 66.66%,
+        hsl(300,100%,${l}%) 83.33%,
+        hsl(360,100%,${l}%) 100%)`,
+    ].join(', ');
+  }
+
+  function sliderGradient(h: number, s: number): string {
+    // Black → fully-saturated color at L=50% → white.
+    return `linear-gradient(to right, #000 0%, hsl(${h}, ${s}%, 50%) 50%, #fff 100%)`;
+  }
+
   function render() {
     const hex = hslToHex(state);
     parent.style.background = hex;
+    pad.style.background = padGradient(state.l);
+    slider.style.background = sliderGradient(state.h, state.s);
     const padRect = pad.getBoundingClientRect();
     padCross.style.left = `${(state.h / 360) * padRect.width}px`;
     padCross.style.top = `${(1 - state.s / 100) * padRect.height}px`;

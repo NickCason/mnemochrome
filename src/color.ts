@@ -1,4 +1,4 @@
-import { formatHex, parse, differenceCiede2000, converter } from 'culori';
+import { formatHex, converter } from 'culori';
 
 const toHsl = converter('hsl');
 
@@ -26,15 +26,34 @@ export function randomTarget(): HSL {
   };
 }
 
-const deltaE = differenceCiede2000();
-
+// Overall match is a weighted average of the per-axis HSL closenesses we
+// already display, so the grade card's headline number reconciles with its
+// breakdown. Hue is weighted by mean saturation: when one or both colors are
+// near-gray, hue is "undefined" and shouldn't inflate or deflate the score.
+//
+// Why not ΔE2000? Perceptually-uniform Lab distance is more accurate to human
+// vision but doesn't agree numerically with HSL-space breakdowns, which made
+// the headline % feel disconnected from the per-axis stats. The per-axis
+// breakdown is what players see and adjust against, so the headline now
+// matches that frame.
 export function scoreMatch(targetHex: string, guessHex: string): number {
-  const a = parse(targetHex);
-  const b = parse(guessHex);
-  if (!a || !b) return 0;
-  const d = deltaE(a, b);
-  const pct = 100 * (1 - d / 50);
-  return Math.max(0, Math.min(100, Math.round(pct)));
+  const a = axisCloseness(targetHex, guessHex);
+  const t = hexToHsl(targetHex);
+  const g = hexToHsl(guessHex);
+
+  const bothAchromatic = t.s < 1.5 && g.s < 1.5;
+  if (bothAchromatic) {
+    // No meaningful hue (and sat is degenerate when both ≈ 0) — among grays,
+    // only lightness is a real axis, so the headline matches it exactly.
+    return a.lightness;
+  }
+
+  // Hue contribution is scaled by mean chroma; a low-saturation target shouldn't
+  // punish a guess on hue precision the player can barely perceive.
+  const meanSatWeight = ((t.s + g.s) / 200); // 0..1
+  const weights = meanSatWeight + 2; // sat + light each contribute weight 1
+  const sum = a.hue * meanSatWeight + a.saturation + a.lightness;
+  return Math.max(0, Math.min(100, Math.round(sum / weights)));
 }
 
 export function hexToHsl(hex: string): HSL {

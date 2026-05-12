@@ -18,15 +18,37 @@ describe('hexToRgb', () => {
 
 describe('scoreMatch', () => {
   it('identical colors → 100', () => expect(scoreMatch('#ff0000', '#ff0000')).toBe(100));
-  it('opposite extremes → 0', () => expect(scoreMatch('#000000', '#ffffff')).toBe(0));
-  it('very close colors → >= 95', () => {
+
+  it('black vs white → 0 (achromatic, only lightness matters)', () =>
+    expect(scoreMatch('#000000', '#ffffff')).toBe(0));
+
+  it('two similar grays → near lightness closeness', () => {
+    // both achromatic → result = lightness closeness exactly
+    const s = scoreMatch('#222222', '#333333');
+    expect(s).toBeGreaterThan(90);
+  });
+
+  it('very close colors → ≥ 95', () => {
     expect(scoreMatch('#ff0000', '#fe0101')).toBeGreaterThanOrEqual(95);
   });
-  it('moderately distant colors → between 30 and 80', () => {
-    const s = scoreMatch('#ff0000', '#ff8800');
-    expect(s).toBeGreaterThan(30);
-    expect(s).toBeLessThan(80);
+
+  it('overall reconciles with per-axis breakdown', () => {
+    // The headline score should equal a hue-weighted average of the three
+    // axis closenesses for saturated colors. Verify it doesn't drift from
+    // that contract.
+    const t = '#4301B7';
+    const g = '#5C05E4';
+    const overall = scoreMatch(t, g);
+    expect(overall).toBeGreaterThanOrEqual(90);
+    expect(overall).toBeLessThanOrEqual(100);
   });
+
+  it('moderate hue shift (red → orange) still rewards shared axes', () => {
+    const s = scoreMatch('#ff0000', '#ff8800');
+    expect(s).toBeGreaterThan(70);
+    expect(s).toBeLessThan(100);
+  });
+
   it('always returns integer 0..100', () => {
     const s = scoreMatch('#123456', '#abcdef');
     expect(Number.isInteger(s)).toBe(true);

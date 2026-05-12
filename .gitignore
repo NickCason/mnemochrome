@@ -15,6 +15,10 @@ dist-ssr
 .superpowers/
 tsconfig.tsbuildinfo
 
+# Defense in depth: tsc is configured noEmit, but if anyone reverts that
+# we don't want emitted JS to land in the repo. Vite is the only bundler.
+src/**/*.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

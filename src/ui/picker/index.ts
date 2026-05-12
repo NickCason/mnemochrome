@@ -115,6 +115,7 @@ export function mountPicker(
   }
 
   const axisOrder: Array<'h' | 's' | 'l'> = ['h', 's', 'l'];
+  const axisStep: Record<'h' | 's' | 'l', number> = { h: 5, s: 1, l: 1 };
   const tapes: TapeHandle[] = axisOrder.map((axis) => {
     return createTape({
       axis,
@@ -129,6 +130,7 @@ export function mountPicker(
       haptics,
       magnifier,
       getState: () => state,
+      valueStep: axisStep[axis],
     });
   });
 

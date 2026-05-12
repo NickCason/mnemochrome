@@ -12,7 +12,7 @@ describe('createHaptics', () => {
 
   afterEach(() => {
     if (origVibrate === undefined) {
-      delete (navigator as Navigator & { vibrate?: unknown }).vibrate;
+      delete (navigator as unknown as { vibrate?: unknown }).vibrate;
     } else {
       Object.defineProperty(navigator, 'vibrate', { value: origVibrate, configurable: true, writable: true });
     }
@@ -45,7 +45,7 @@ describe('createHaptics', () => {
   });
 
   it('does not throw when navigator.vibrate is undefined', () => {
-    delete (navigator as Navigator & { vibrate?: unknown }).vibrate;
+    delete (navigator as unknown as { vibrate?: unknown }).vibrate;
     const h = createHaptics(() => true);
     expect(() => { h.tick(); h.tickStrong(); h.tickFirm(); }).not.toThrow();
   });

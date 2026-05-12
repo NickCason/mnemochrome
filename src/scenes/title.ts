@@ -1,8 +1,18 @@
 // src/scenes/title.ts
 // Title scene: large wordmark, decorative hue strip, glass stats card,
 // view-time slider, Tap-to-play CTA, build SHA stamp in the corner.
+//
+// "Alive" treatments: wordmark letters fade-translate in with 50ms stagger;
+// the two magenta o's pick up a slow breath cycle after the entrance lands;
+// the hue strip drifts laterally on a 60s loop (ambient); the Best/Avg
+// stats count up from 0 with the same ease-out the grade card uses.
 
 import { loadState, updateSettings, avgLast10 } from '../state';
+
+const WORDMARK_TEXT = 'mnemochrome';
+const O_INDICES = new Set([4, 8]); // positions of the two o's
+const LETTER_STAGGER_MS = 50;
+const LETTER_ENTRANCE_MS = 600;
 
 export function mountTitle(root: HTMLElement, onPlay: () => void): () => void {
   root.innerHTML = '';
@@ -10,6 +20,7 @@ export function mountTitle(root: HTMLElement, onPlay: () => void): () => void {
 
   const { pb, last10, settings } = loadState();
   const avg = avgLast10(last10);
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const col = document.createElement('div');
   col.style.cssText =
@@ -20,9 +31,20 @@ export function mountTitle(root: HTMLElement, onPlay: () => void): () => void {
   header.style.cssText =
     'display:flex;flex-direction:column;align-items:center;gap:18px;';
 
+  // Build the wordmark as individual <span> letters so each can carry its
+  // own staggered entrance animation. The two o's get a `.o` class for the
+  // magenta tint and the post-entrance breath cycle.
   const wordmark = document.createElement('h1');
   wordmark.className = 'wordmark';
-  wordmark.innerHTML = 'mnem<span class="o">o</span>chr<span class="o">o</span>me';
+  const letterSpans: HTMLSpanElement[] = [];
+  [...WORDMARK_TEXT].forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.textContent = ch;
+    if (O_INDICES.has(i)) span.classList.add('o');
+    span.style.animationDelay = `${i * LETTER_STAGGER_MS}ms`;
+    letterSpans.push(span);
+    wordmark.appendChild(span);
+  });
 
   const hueStrip = document.createElement('div');
   hueStrip.className = 'hue-strip';
@@ -41,7 +63,7 @@ export function mountTitle(root: HTMLElement, onPlay: () => void): () => void {
   statsCard.style.cssText =
     'display:flex;align-items:stretch;padding:20px 8px;gap:8px;min-width:260px;';
 
-  function statCell(label: string, value: string): HTMLElement {
+  function statCell(label: string): { el: HTMLElement; setValue: (v: number) => void } {
     const cell = document.createElement('div');
     cell.style.cssText =
       'flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 16px;';
@@ -51,18 +73,25 @@ export function mountTitle(root: HTMLElement, onPlay: () => void): () => void {
     const val = document.createElement('div');
     val.style.cssText =
       "font-family:'Fraunces Variable',Georgia,serif;font-weight:400;font-size:36px;line-height:1;color:var(--paper);font-feature-settings:'tnum';";
-    val.textContent = value;
+    val.textContent = '0%';
     cell.appendChild(lab);
     cell.appendChild(val);
-    return cell;
+    return {
+      el: cell,
+      setValue: (v: number) => {
+        val.textContent = `${v}%`;
+      },
+    };
   }
 
   const divider = document.createElement('div');
   divider.style.cssText = 'width:1px;background:var(--glass-border);';
 
-  statsCard.appendChild(statCell('Best', `${pb}%`));
+  const bestStat = statCell('Best');
+  const avgStat = statCell('Avg 10');
+  statsCard.appendChild(bestStat.el);
   statsCard.appendChild(divider);
-  statsCard.appendChild(statCell('Avg 10', `${avg}%`));
+  statsCard.appendChild(avgStat.el);
 
   // View-time control
   const sliderGroup = document.createElement('div');
@@ -121,7 +150,52 @@ export function mountTitle(root: HTMLElement, onPlay: () => void): () => void {
   stamp.textContent = `v${__BUILD_SHA__}`;
   root.appendChild(stamp);
 
+  // Reduced motion: skip count-up, skip breath, finalize values.
+  if (reduced) {
+    bestStat.setValue(pb);
+    avgStat.setValue(avg);
+    return () => {
+      root.innerHTML = '';
+    };
+  }
+
+  // Schedule the breath cycle on the o's to begin after their entrance
+  // animation finishes (entrance ~600ms, last o starts at index 8 → delay 400ms).
+  const timers: number[] = [];
+  letterSpans.forEach((span, i) => {
+    if (!O_INDICES.has(i)) return;
+    timers.push(
+      window.setTimeout(
+        () => span.classList.add('o-breath'),
+        i * LETTER_STAGGER_MS + LETTER_ENTRANCE_MS,
+      ),
+    );
+  });
+
+  // Stat count-up — same ease-out curve as the grade card, offset to start
+  // after the wordmark has begun appearing so the title doesn't all happen
+  // at once.
+  const startT = performance.now();
+  const valueAt = (target: number, from: number, to: number, elapsed: number): number => {
+    if (elapsed <= from) return 0;
+    if (elapsed >= to) return target;
+    const p = (elapsed - from) / (to - from);
+    return Math.round((1 - Math.pow(1 - p, 3)) * target);
+  };
+  const BEST = { from: 700, to: 1500 };
+  const AVG = { from: 850, to: 1650 };
+  let raf = 0;
+  const tick = (t: number) => {
+    const elapsed = t - startT;
+    bestStat.setValue(valueAt(pb, BEST.from, BEST.to, elapsed));
+    avgStat.setValue(valueAt(avg, AVG.from, AVG.to, elapsed));
+    if (elapsed < AVG.to) raf = requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+
   return () => {
+    cancelAnimationFrame(raf);
+    timers.forEach((t) => clearTimeout(t));
     root.innerHTML = '';
   };
 }

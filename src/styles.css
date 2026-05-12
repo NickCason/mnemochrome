@@ -63,6 +63,29 @@ body {
   color: var(--accent);
 }
 
+/* Wordmark letter-by-letter entrance — animation-delay is applied inline
+   per letter to produce a 50ms stagger across the eleven characters. */
+.wordmark span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: wordmarkLetterIn 600ms cubic-bezier(0.2, 0.85, 0.25, 1) forwards;
+}
+@keyframes wordmarkLetterIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* The two magenta o's pick up a soft breath cycle once the entrance
+   class has been removed (handled in JS post-entrance). */
+.wordmark .o.o-breath {
+  animation: wordmarkOBreath 4.6s ease-in-out infinite;
+}
+@keyframes wordmarkOBreath {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50%      { transform: scale(1.06); filter: brightness(1.12); }
+}
+
 .label-micro {
   font-size: 11px;
   letter-spacing: 0.14em;
@@ -112,6 +135,8 @@ body {
   width: 200px;
   height: 4px;
   border-radius: 2px;
+  /* Doubled gradient so background-position can slide across a full hue
+     wheel without seams — the second cycle ensures the wrap is smooth. */
   background: linear-gradient(
     to right,
     hsl(0, 80%, 55%),
@@ -120,9 +145,24 @@ body {
     hsl(180, 80%, 55%),
     hsl(240, 80%, 55%),
     hsl(300, 80%, 55%),
-    hsl(360, 80%, 55%)
+    hsl(360, 80%, 55%),
+    hsl(60, 80%, 55%),
+    hsl(120, 80%, 55%)
   );
+  background-size: 200% 100%;
+  background-position: 0% 50%;
   opacity: 0.72;
+  animation: hueStripDrift 60s linear infinite;
+}
+@keyframes hueStripDrift {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wordmark span { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .wordmark .o.o-breath { animation: none !important; }
+  .hue-strip { animation: none !important; }
 }
 
 .version-stamp {

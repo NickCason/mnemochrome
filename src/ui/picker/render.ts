@@ -7,12 +7,12 @@ import type { HSL } from '../../color';
 // scrolling by, while the selection-slot's truecolor (and the live swatch,
 // and the picker's state) all stay at the user's actual pick.
 
-const S_FLOOR_FOR_HUE = 50;
-const S_THRESHOLD = 30;
-const L_PREVIEW_MIN = 30;
-const L_PREVIEW_MAX = 70;
-const L_THRESHOLD_LOW = 20;
-const L_THRESHOLD_HIGH = 80;
+const S_FLOOR_FOR_HUE = 25;
+const S_THRESHOLD = 25;
+const L_PREVIEW_MIN = 35;
+const L_PREVIEW_MAX = 65;
+const L_THRESHOLD_LOW = 15;
+const L_THRESHOLD_HIGH = 85;
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));

@@ -12,19 +12,19 @@ describe('huePreviewSlice', () => {
     expect(huePreviewSlice(0, 30, 30)).toBe('hsl(0, 30%, 30%)');
   });
 
-  it('floors S when actual S is below threshold (so hue stays visible)', () => {
-    expect(huePreviewSlice(180, 0, 50)).toBe('hsl(180, 50%, 50%)');
-    expect(huePreviewSlice(180, 29, 50)).toBe('hsl(180, 50%, 50%)');
+  it('floors S to a low tint when actual S is below threshold', () => {
+    expect(huePreviewSlice(180, 0, 50)).toBe('hsl(180, 25%, 50%)');
+    expect(huePreviewSlice(180, 24, 50)).toBe('hsl(180, 25%, 50%)');
   });
 
-  it('clamps L when actual L is at an extreme (so hues don\'t wash to black/white)', () => {
-    expect(huePreviewSlice(180, 70, 5)).toBe('hsl(180, 70%, 30%)');
-    expect(huePreviewSlice(180, 70, 95)).toBe('hsl(180, 70%, 70%)');
+  it('clamps L only when actual L is at an extreme', () => {
+    expect(huePreviewSlice(180, 70, 5)).toBe('hsl(180, 70%, 35%)');
+    expect(huePreviewSlice(180, 70, 95)).toBe('hsl(180, 70%, 65%)');
   });
 
-  it('leaves L alone when it\'s outside the extreme thresholds', () => {
-    expect(huePreviewSlice(180, 70, 25)).toBe('hsl(180, 70%, 25%)');
-    expect(huePreviewSlice(180, 70, 75)).toBe('hsl(180, 70%, 75%)');
+  it('leaves L alone outside the extreme thresholds', () => {
+    expect(huePreviewSlice(180, 70, 20)).toBe('hsl(180, 70%, 20%)');
+    expect(huePreviewSlice(180, 70, 80)).toBe('hsl(180, 70%, 80%)');
   });
 });
 

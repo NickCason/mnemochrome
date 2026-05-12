@@ -8,11 +8,7 @@ import {
 } from './render';
 
 export const SLOT_PITCH = 32;
-// Buffer above + below the centered slot. 15 slots total per tape; ~7 are
-// visible inside the 252px capsule, the rest are off-window for the strip's
-// translate to draw against.
-const CENTER_INDEX = 7;
-const TOTAL_SLOTS = CENTER_INDEX * 2 + 1; // 15
+const DEFAULT_TOTAL_SLOTS = 15;
 export const V_SLOW = 1.0;
 export const V_FAST = 2.5;
 export const MAX_SCALE = 8;
@@ -33,7 +29,7 @@ export function velocityScale(v: number): number {
 }
 
 export function dragToValueDelta(deltaYPx: number, velocityPxMs: number): number {
-  const base = -deltaYPx / SLOT_PITCH; // up = positive, units = slot-pitches
+  const base = -deltaYPx / SLOT_PITCH;
   return (base * velocityScale(velocityPxMs)) || 0;
 }
 
@@ -55,10 +51,13 @@ export interface TapeOpts {
   haptics: HapticsHandle;
   magnifier: MagnifierHandle;
   getState: () => HSL;
-  /** Value units per slot. Defaults to 1 (sat/light). Set to 5 for hue so a
-   *  visible 7-slot window spans 35° of hue — enough to see a real color
-   *  gradient. */
-  valueStep?: number;
+  /** Px per unit. Smaller pitch = denser tape. Default 32 (good for 100-unit
+   *  axes like sat/light). Hue uses ~8 for visible spectrum density at 1°
+   *  precision. */
+  slotPitch?: number;
+  /** Total slot DOM nodes — enough to cover visible window + buffer for the
+   *  strip's translate. Default 15 (works for 32px pitch). */
+  totalSlots?: number;
 }
 
 export interface TapeHandle {
@@ -69,7 +68,9 @@ export interface TapeHandle {
 }
 
 export function createTape(opts: TapeOpts): TapeHandle {
-  const valueStep = opts.valueStep ?? 1;
+  const pitch = opts.slotPitch ?? SLOT_PITCH;
+  const totalSlots = opts.totalSlots ?? DEFAULT_TOTAL_SLOTS;
+  const centerIndex = Math.floor(totalSlots / 2);
 
   let value = opts.initialValue;
   let dragging = false;
@@ -93,14 +94,14 @@ export function createTape(opts: TapeOpts): TapeHandle {
     'border-left:1px solid rgba(236,230,218,0.10)',
   ].join(';');
 
-  // Top/bottom fades so slots outside the visible window soften into the ink.
   const fadeTop = document.createElement('div');
   fadeTop.style.cssText = 'position:absolute;left:0;right:0;top:0;height:38%;background:linear-gradient(to bottom, rgba(14,14,16,0.92), rgba(14,14,16,0));pointer-events:none;z-index:2;';
   const fadeBot = document.createElement('div');
   fadeBot.style.cssText = 'position:absolute;left:0;right:0;bottom:0;height:38%;background:linear-gradient(to top, rgba(14,14,16,0.92), rgba(14,14,16,0));pointer-events:none;z-index:2;';
 
-  // Strip carrying TOTAL_SLOTS rounded-bar slots, translated so the centered
-  // slot lands on the tape's vertical centerline.
+  // Strip is `totalSlots * pitch` tall. Each slot is `pitch` tall. Width-padded
+  // for the rounded bar look; very small pitches (hue) get reduced inner
+  // padding so the bar still has some height visually.
   const strip = document.createElement('div');
   strip.style.cssText = [
     'position:absolute',
@@ -114,16 +115,20 @@ export function createTape(opts: TapeOpts): TapeHandle {
     'will-change:transform',
   ].join(';');
 
+  const innerMargin = pitch >= 24 ? 3 : 1;
+  const slotHeight = pitch - innerMargin * 2;
+  const slotRadius = Math.min(5, Math.floor(slotHeight / 2));
+
   const slots: HTMLDivElement[] = [];
-  for (let i = 0; i < TOTAL_SLOTS; i++) {
+  for (let i = 0; i < totalSlots; i++) {
     const s = document.createElement('div');
     s.style.cssText = [
-      'width:74%',
-      `height:${SLOT_PITCH - 6}px`,
-      'margin:3px 0',
-      'border-radius:5px',
+      'width:78%',
+      `height:${slotHeight}px`,
+      `margin:${innerMargin}px 0`,
+      `border-radius:${slotRadius}px`,
       'flex-shrink:0',
-      'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.25)',
+      'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.22)',
     ].join(';');
     strip.appendChild(s);
     slots.push(s);
@@ -133,27 +138,18 @@ export function createTape(opts: TapeOpts): TapeHandle {
   el.appendChild(fadeTop);
   el.appendChild(fadeBot);
 
-  // currentSnap = nearest valueStep multiple to current value. Slot at
-  // CENTER_INDEX shows currentSnap; slot[CENTER_INDEX + i] shows
-  // currentSnap + i * valueStep.
-  function currentSnap(): number {
-    return Math.round(value / valueStep) * valueStep;
-  }
-
   function renderTransform(): void {
-    const snap = currentSnap();
-    // Offset is fraction of one slot-pitch the strip should drift to
-    // visually represent `value` between snap points. Range [-0.5, 0.5].
-    const offset = (value - snap) / valueStep;
-    const tY = -(CENTER_INDEX + 0.5 + offset) * SLOT_PITCH;
+    const intValue = Math.round(value);
+    const offset = value - intValue;
+    const tY = -(centerIndex + 0.5 + offset) * pitch;
     strip.style.transform = `translateY(${tY}px)`;
   }
 
   function renderColors(): void {
     const state = opts.getState();
-    const snap = currentSnap();
-    for (let i = 0; i < TOTAL_SLOTS; i++) {
-      const slotValue = normalizeValue(snap + (i - CENTER_INDEX) * valueStep, opts.axis);
+    const intValue = Math.round(value);
+    for (let i = 0; i < totalSlots; i++) {
+      const slotValue = normalizeValue(intValue + (i - centerIndex), opts.axis);
       let color: string;
       if (opts.axis === 'h')      color = huePreviewSlice(slotValue, state.s, state.l);
       else if (opts.axis === 's') color = satPreviewSlice(slotValue, state.h, state.l);
@@ -163,11 +159,11 @@ export function createTape(opts: TapeOpts): TapeHandle {
   }
 
   function setValue(next: number, fireChange: boolean): void {
-    const prevSnap = currentSnap();
+    const prevRounded = Math.round(value);
     value = normalizeValue(next, opts.axis);
-    const nextSnap = currentSnap();
-    if (nextSnap !== prevSnap) {
-      if (nextSnap % 10 === 0) opts.haptics.tickStrong();
+    const newRounded = Math.round(value);
+    if (newRounded !== prevRounded) {
+      if (newRounded % 10 === 0) opts.haptics.tickStrong();
       else opts.haptics.tick();
       renderColors();
     }
@@ -217,20 +213,21 @@ export function createTape(opts: TapeOpts): TapeHandle {
       const dt = t - prevTime;
       prevTime = t;
       const dy = v * dt;
-      const dValue = dragToValueDelta(dy, Math.abs(v)) * valueStep;
+      const base = -dy / pitch;
+      const dValue = (base * velocityScale(Math.abs(v))) || 0;
       setValue(value + dValue, true);
       v *= Math.exp(-INERTIA_DECAY_PER_MS * dt);
       if (Math.abs(v) > 0.05) {
         rafId = requestAnimationFrame(step);
       } else {
-        snapToSnap();
+        snapToInteger();
       }
     };
     rafId = requestAnimationFrame(step);
   }
 
-  function snapToSnap(): void {
-    animateTo(currentSnap());
+  function snapToInteger(): void {
+    animateTo(Math.round(value));
   }
 
   function endDrag(): void {
@@ -250,7 +247,7 @@ export function createTape(opts: TapeOpts): TapeHandle {
     startTime = lastTime;
     velocity = 0;
     totalAbsMove = 0;
-    opts.magnifier.update(e.clientX, e.clientY, currentSnap(), opts.axis, opts.getState(), valueStep);
+    opts.magnifier.update(e.clientX, e.clientY, value, opts.axis, opts.getState());
   }, sig);
 
   el.addEventListener('pointermove', (e: PointerEvent) => {
@@ -260,11 +257,12 @@ export function createTape(opts: TapeOpts): TapeHandle {
     const dy = e.clientY - lastY;
     velocity = dy / dt;
     totalAbsMove += Math.abs(dy);
-    const dValue = dragToValueDelta(dy, Math.abs(velocity)) * valueStep;
+    const base = -dy / pitch;
+    const dValue = (base * velocityScale(Math.abs(velocity))) || 0;
     setValue(value + dValue, true);
     lastY = e.clientY;
     lastTime = now;
-    opts.magnifier.update(e.clientX, e.clientY, currentSnap(), opts.axis, opts.getState(), valueStep);
+    opts.magnifier.update(e.clientX, e.clientY, value, opts.axis, opts.getState());
   }, sig);
 
   function pointerEnd(e: PointerEvent): void {
@@ -277,13 +275,13 @@ export function createTape(opts: TapeOpts): TapeHandle {
       const rect = el.getBoundingClientRect();
       const centerY = rect.top + rect.height / 2;
       const direction = e.clientY < centerY ? 1 : -1;
-      animateTo(currentSnap() + direction * valueStep);
+      animateTo(Math.round(value) + direction);
       return;
     }
     if (Math.abs(velocity) >= INERTIA_MIN_V && !prefersReducedMotion()) {
       startInertia(velocity);
     } else {
-      snapToSnap();
+      snapToInteger();
     }
   }
   el.addEventListener('pointerup', pointerEnd, sig);
@@ -291,7 +289,7 @@ export function createTape(opts: TapeOpts): TapeHandle {
     if (e.pointerId !== activePointerId) return;
     try { el.releasePointerCapture(e.pointerId); } catch { /* noop */ }
     endDrag();
-    snapToSnap();
+    snapToInteger();
   }, sig);
 
   renderColors();

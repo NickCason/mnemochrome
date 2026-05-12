@@ -8,8 +8,9 @@ export type MagnifierAxis = 'h' | 's' | 'l';
 
 export interface MagnifierHandle {
   /** Show / re-position / re-render in one call. Idempotent.
-   *  `step` is the value-units-per-slot of the tape (1 for sat/light, 5 for hue). */
-  update: (x: number, y: number, value: number, axis: MagnifierAxis, state: HSL, step?: number) => void;
+   *  `value` is the tape's actual (often fractional) value, so slice colors
+   *  smoothly track the drag. */
+  update: (x: number, y: number, value: number, axis: MagnifierAxis, state: HSL) => void;
   hide: () => void;
   destroy: () => void;
 }
@@ -75,11 +76,11 @@ export function createMagnifier(parent: HTMLElement): MagnifierHandle {
   wrapper.appendChild(nub);
   parent.appendChild(wrapper);
 
-  function renderSlices(value: number, axis: MagnifierAxis, state: HSL, step: number): void {
+  function renderSlices(value: number, axis: MagnifierAxis, state: HSL): void {
     const wrap = axis === 'h';
     const max = wrap ? 360 : 100;
     for (let i = 0; i < 5; i++) {
-      const delta = (i - 2) * step;
+      const delta = i - 2;
       let v = value + delta;
       if (wrap) v = ((v % max) + max) % max;
       else v = Math.max(0, Math.min(max, v));
@@ -92,8 +93,8 @@ export function createMagnifier(parent: HTMLElement): MagnifierHandle {
   }
 
   return {
-    update: (x, y, value, axis, state, step = 1) => {
-      renderSlices(value, axis, state, step);
+    update: (x, y, value, axis, state) => {
+      renderSlices(value, axis, state);
       const parentRect = parent.getBoundingClientRect();
       const localX = x - parentRect.left;
       const localY = y - parentRect.top;

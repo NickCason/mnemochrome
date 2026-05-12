@@ -81,9 +81,13 @@ body {
 .wordmark .o.o-breath {
   animation: wordmarkOBreath 4.6s ease-in-out infinite;
 }
+/* Once .o-breath is added, the span's animation property is replaced — the
+   `forwards` fill of wordmarkLetterIn no longer applies, so the base
+   .wordmark span styles (opacity:0; translateY(8px)) take over again. Hold
+   the entrance's final values here so the o's stay visible while pulsing. */
 @keyframes wordmarkOBreath {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50%      { transform: scale(1.06); filter: brightness(1.12); }
+  0%, 100% { opacity: 1; transform: translateY(0) scale(1);    filter: brightness(1); }
+  50%      { opacity: 1; transform: translateY(0) scale(1.06); filter: brightness(1.12); }
 }
 
 .label-micro {

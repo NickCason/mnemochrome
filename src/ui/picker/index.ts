@@ -130,17 +130,18 @@ export function mountPicker(
   }
 
   const axisOrder: Array<'h' | 's' | 'l'> = ['h', 's', 'l'];
-  // All three tapes use the same dense slot pitch (6px = 1 unit) so the
-  // visible window shows ~42 units of context on every axis. The 32px lens
-  // overlay at center picks out the actual selected value at the same
-  // physical size for all tapes — direction in the gradient reads clearly
-  // and 1-unit precision stays intact.
-  const TAPE_PITCH = 6;
-  const TAPE_TOTAL_SLOTS = 49;
+  // Hue needs much higher visual density than sat/light because its range
+  // (360°) is 3.6× wider and adjacent hues at narrow pitches blend so the
+  // gradient direction reads more like a smooth ribbon than discrete bars.
+  // At pitch 3, the visible window spans ~84° of spectrum — roughly a
+  // quarter of the wheel — so the user can clearly see red→orange→yellow
+  // (or any analogous arc) at a glance. 1° precision is preserved (each
+  // slot is still one unit). The 32px lens at center picks out the actual
+  // selected value at a readable size regardless of pitch.
   const axisCfg: Record<'h' | 's' | 'l', { slotPitch: number; totalSlots: number }> = {
-    h: { slotPitch: TAPE_PITCH, totalSlots: TAPE_TOTAL_SLOTS },
-    s: { slotPitch: TAPE_PITCH, totalSlots: TAPE_TOTAL_SLOTS },
-    l: { slotPitch: TAPE_PITCH, totalSlots: TAPE_TOTAL_SLOTS },
+    h: { slotPitch: 3,  totalSlots: 105 },
+    s: { slotPitch: 6,  totalSlots: 49  },
+    l: { slotPitch: 6,  totalSlots: 49  },
   };
   const tapes: TapeHandle[] = axisOrder.map((axis) => {
     return createTape({

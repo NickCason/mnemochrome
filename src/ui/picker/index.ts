@@ -3,7 +3,7 @@ import { hslToHex } from '../../color';
 import { loadState } from '../../state';
 import { createHaptics } from './haptics';
 import { createMagnifier } from './magnifier';
-import { createTape, type TapeHandle } from './tape';
+import { createTape, type TapeHandle, SLOT_PITCH } from './tape';
 import { trueColor } from './render';
 
 export interface PickerHandle {
@@ -25,17 +25,22 @@ export function mountPicker(
     'inset:0',
     'display:flex',
     'flex-direction:column',
-    'padding-top:calc(0px + env(safe-area-inset-top))',
+    'padding-top:env(safe-area-inset-top)',
     'padding-bottom:calc(96px + env(safe-area-inset-bottom))',
   ].join(';');
 
   const swatch = document.createElement('div');
-  swatch.style.cssText = 'flex:1 1 50%;min-height:120px;background:' + trueColor(state) + ';';
+  swatch.style.cssText = [
+    'flex:1 1 50%',
+    'min-height:120px',
+    'background:' + trueColor(state),
+    'transition:background 60ms linear',
+  ].join(';');
   root.appendChild(swatch);
 
   const readout = document.createElement('div');
   readout.style.cssText = [
-    'padding:8px 0',
+    'padding:10px 0 6px',
     'text-align:center',
     "font-family:'Inter Variable',system-ui,sans-serif",
     'font-size:13px',
@@ -46,21 +51,53 @@ export function mountPicker(
   root.appendChild(readout);
 
   const labels = document.createElement('div');
-  labels.style.cssText = 'display:flex;padding:0 12px 6px;';
+  labels.style.cssText = 'display:flex;padding:0 28px 8px;';
   for (const text of ['HUE', 'SAT', 'LIGHT']) {
     const span = document.createElement('div');
     span.className = 'label-micro';
     span.style.flex = '1';
     span.style.textAlign = 'center';
-    span.textContent = text;
     labels.appendChild(span);
+    span.textContent = text;
   }
   root.appendChild(labels);
 
-  const tapesEl = document.createElement('div');
-  tapesEl.style.cssText = 'display:flex;flex:0 0 260px;position:relative;';
-  root.appendChild(tapesEl);
+  // Unified tapes container — one rounded capsule wrapping all three tapes,
+  // with a horizontal selection band overlay spanning all three at the
+  // vertical center. iOS-picker style.
+  const tapesWrap = document.createElement('div');
+  tapesWrap.style.cssText = [
+    'position:relative',
+    'flex:0 0 252px',
+    'margin:0 16px',
+    'border:1px solid rgba(236,230,218,0.18)',
+    'border-radius:16px',
+    'overflow:hidden',
+    'background:rgba(14,14,16,0.45)',
+    'box-shadow:0 6px 22px rgba(0,0,0,0.35), inset 0 1px 0 rgba(236,230,218,0.04)',
+  ].join(';');
 
+  const tapesRow = document.createElement('div');
+  tapesRow.style.cssText = 'display:flex;height:100%;';
+  tapesWrap.appendChild(tapesRow);
+
+  // Selection band — two thin paper-colored rules framing the center row.
+  const band = document.createElement('div');
+  band.style.cssText = [
+    'position:absolute',
+    'left:0',
+    'right:0',
+    'top:50%',
+    `height:${SLOT_PITCH}px`,
+    `margin-top:${-SLOT_PITCH / 2}px`,
+    'border-top:1px solid rgba(236,230,218,0.55)',
+    'border-bottom:1px solid rgba(236,230,218,0.55)',
+    'pointer-events:none',
+    'z-index:3',
+  ].join(';');
+  tapesWrap.appendChild(band);
+
+  root.appendChild(tapesWrap);
   parent.appendChild(root);
 
   const hapticsEnabled = loadState().settings.haptics;
@@ -95,7 +132,7 @@ export function mountPicker(
     });
   });
 
-  tapes.forEach((t) => tapesEl.appendChild(t.el));
+  tapes.forEach((t) => tapesRow.appendChild(t.el));
 
   renderOutput();
 

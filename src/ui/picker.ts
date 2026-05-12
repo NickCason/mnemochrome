@@ -32,9 +32,12 @@ export function mountPicker(
   const pad = document.createElement('div');
   pad.style.cssText =
     'flex:1 1 0;width:100%;max-width:360px;max-height:380px;position:relative;touch-action:none;overflow:hidden;border-radius:16px;border:1px solid var(--glass-border, rgba(236,230,218,0.18));box-shadow:0 6px 24px rgba(0,0,0,0.35);';
+  // Lens reticle: filled with the current pick so the contact point IS the
+  // color being chosen. Paper outline + ink stroke + soft drop shadow keeps
+  // it readable on any background (yellow, dark blue, etc).
   const padCross = document.createElement('div');
   padCross.style.cssText =
-    'position:absolute;width:26px;height:26px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:2;box-shadow:0 0 0 1px rgba(0,0,0,0.4);';
+    'position:absolute;width:26px;height:26px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:2;box-shadow:0 0 0 1px rgba(0,0,0,0.45),0 2px 8px rgba(0,0,0,0.4);';
   pad.appendChild(padCross);
 
   const slider = document.createElement('div');
@@ -42,7 +45,7 @@ export function mountPicker(
     'width:100%;max-width:360px;height:56px;position:relative;touch-action:none;overflow:hidden;border-radius:16px;border:1px solid var(--glass-border, rgba(236,230,218,0.18));box-shadow:0 6px 24px rgba(0,0,0,0.35);';
   const sliderThumb = document.createElement('div');
   sliderThumb.style.cssText =
-    'position:absolute;top:50%;width:34px;height:34px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;background:transparent;transform:translate(-50%,-50%);pointer-events:none;z-index:2;box-shadow:0 0 0 1px rgba(0,0,0,0.4);';
+    'position:absolute;top:50%;width:34px;height:34px;border:2px solid var(--paper);outline:1px solid var(--ink);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:2;box-shadow:0 0 0 1px rgba(0,0,0,0.45),0 2px 8px rgba(0,0,0,0.4);';
   slider.appendChild(sliderThumb);
 
   root.appendChild(pad);
@@ -73,6 +76,9 @@ export function mountPicker(
     parent.style.background = hex;
     pad.style.background = padGradient(state.l);
     slider.style.background = sliderGradient(state.h, state.s);
+    // Lens fill — both reticles show the live pick.
+    padCross.style.background = hex;
+    sliderThumb.style.background = hex;
     const padRect = pad.getBoundingClientRect();
     padCross.style.left = `${(state.h / 360) * padRect.width}px`;
     padCross.style.top = `${(1 - state.s / 100) * padRect.height}px`;

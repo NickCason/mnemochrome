@@ -240,23 +240,25 @@ body {
   transform: translateY(100%);
   animation-name: shutterBot;
 }
-/* Close (0%→22%): ease-in — bars wait off-screen, slam into center.
-   Open  (52%→74%): mirror the close visually. Since the bars are visible
-   throughout the open phase (they start at centre), an ease-in curve there
-   reads as "hold then flash off". Use a balanced ease so the bars peel away
-   with visible momentum and the user sees a real reveal motion. */
+/* Close (0%→20%): ease-in — bars wait off-screen, slam into center.
+   Hold  (20%→38%): bars locked at center (eyes closed).
+   Open  (38%→82%): bars retract over a long 44% window so the motion is
+                    clearly visible. Linear so there's no slow-start delay,
+                    no fast-end snap — bars peel back at a steady rate the
+                    eye can track all the way out.
+   Settle (82%→100%): bars held off-screen. */
 @keyframes shutterTop {
   0%   { transform: translateY(-100%); animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
-  22%  { transform: translateY(0);     animation-timing-function: steps(1, end); }
-  52%  { transform: translateY(0);     animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
-  74%  { transform: translateY(-100%); animation-timing-function: steps(1, end); }
+  20%  { transform: translateY(0);     animation-timing-function: steps(1, end); }
+  38%  { transform: translateY(0);     animation-timing-function: linear; }
+  82%  { transform: translateY(-100%); animation-timing-function: steps(1, end); }
   100% { transform: translateY(-100%); }
 }
 @keyframes shutterBot {
   0%   { transform: translateY(100%); animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
-  23%  { transform: translateY(0);    animation-timing-function: steps(1, end); }
-  54%  { transform: translateY(0);    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
-  76%  { transform: translateY(100%); animation-timing-function: steps(1, end); }
+  21%  { transform: translateY(0);    animation-timing-function: steps(1, end); }
+  38%  { transform: translateY(0);    animation-timing-function: linear; }
+  84%  { transform: translateY(100%); animation-timing-function: steps(1, end); }
   100% { transform: translateY(100%); }
 }
 .shutter-seam {

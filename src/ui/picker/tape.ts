@@ -66,14 +66,15 @@ export function createTape(opts: TapeOpts): TapeHandle {
   let value = opts.initialValue;
   let dragging = false;
   let activePointerId: number | null = null;
-  let startY = 0;
   let lastY = 0;
   let lastTime = 0;
   let velocity = 0;
-  let startValue = 0;
   let startTime = 0;
   let totalAbsMove = 0;
   let inertiaRaf = 0;
+
+  const ac = new AbortController();
+  const sig = { signal: ac.signal };
 
   const el = document.createElement('div');
   el.style.cssText = [
@@ -188,17 +189,15 @@ export function createTape(opts: TapeOpts): TapeHandle {
     if (activePointerId !== null) return;
     cancelInertia();
     activePointerId = e.pointerId;
-    el.setPointerCapture(e.pointerId);
+    try { el.setPointerCapture(e.pointerId); } catch { /* noop */ }
     dragging = true;
-    startY = e.clientY;
     lastY = e.clientY;
     lastTime = performance.now();
     startTime = lastTime;
     velocity = 0;
-    startValue = value;
     totalAbsMove = 0;
     opts.magnifier.update(e.clientX, e.clientY, Math.round(value), opts.axis, opts.getState());
-  });
+  }, sig);
 
   el.addEventListener('pointermove', (e: PointerEvent) => {
     if (e.pointerId !== activePointerId || !dragging) return;
@@ -212,7 +211,7 @@ export function createTape(opts: TapeOpts): TapeHandle {
     lastY = e.clientY;
     lastTime = now;
     opts.magnifier.update(e.clientX, e.clientY, Math.round(value), opts.axis, opts.getState());
-  });
+  }, sig);
 
   function pointerEnd(e: PointerEvent): void {
     if (e.pointerId !== activePointerId) return;
@@ -238,16 +237,12 @@ export function createTape(opts: TapeOpts): TapeHandle {
     }
     startInertia(velocity);
   }
-  el.addEventListener('pointerup', pointerEnd);
+  el.addEventListener('pointerup', pointerEnd, sig);
   el.addEventListener('pointercancel', (e) => {
     if (e.pointerId !== activePointerId) return;
     try { el.releasePointerCapture(e.pointerId); } catch { /* noop */ }
     endDrag();
-  });
-
-  // suppress unused variable warnings for vars used only in event closures
-  void startY;
-  void startValue;
+  }, sig);
 
   // initial render
   renderSlots();
@@ -257,6 +252,7 @@ export function createTape(opts: TapeOpts): TapeHandle {
     rerenderSlices: renderSlots,
     getValue: () => value,
     destroy: () => {
+      ac.abort();
       cancelInertia();
       el.remove();
     },

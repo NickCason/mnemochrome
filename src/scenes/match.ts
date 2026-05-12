@@ -13,7 +13,11 @@ export function mountMatch(
   root.innerHTML = '';
   root.style.background = 'var(--ink)';
 
-  const picker = mountPicker(root, { h: 0, s: 0, l: 50 }, () => {});
+  const picker = mountPicker(
+    root,
+    { h: Math.floor(Math.random() * 360), s: 50, l: 50 },
+    () => {},
+  );
 
   const btn = document.createElement('button');
   btn.className = 'btn-primary';

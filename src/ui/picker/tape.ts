@@ -138,6 +138,37 @@ export function createTape(opts: TapeOpts): TapeHandle {
   el.appendChild(fadeTop);
   el.appendChild(fadeBot);
 
+  // Lens overlay: a 32px-tall element at the band center showing the live
+  // selected value at the same physical size as sat/light's centered slot.
+  // Only mounted on dense (small-pitch) tapes where the strip's individual
+  // slots are too small to read on their own — i.e. hue.
+  let lens: HTMLDivElement | null = null;
+  if (pitch < SLOT_PITCH) {
+    lens = document.createElement('div');
+    lens.style.cssText = [
+      'position:absolute',
+      'left:11%',
+      'right:11%',
+      'top:50%',
+      `height:${SLOT_PITCH}px`,
+      `margin-top:-${SLOT_PITCH / 2}px`,
+      'border-radius:6px',
+      'box-shadow:0 0 0 1px rgba(236,230,218,0.9), inset 0 0 0 1px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.5)',
+      'pointer-events:none',
+      'z-index:3',
+      'will-change:background',
+    ].join(';');
+    el.appendChild(lens);
+  }
+
+  function renderLens(): void {
+    if (!lens) return;
+    const state = opts.getState();
+    if (opts.axis === 'h')      lens.style.background = huePreviewSlice(value, state.s, state.l);
+    else if (opts.axis === 's') lens.style.background = satPreviewSlice(value, state.h, state.l);
+    else                        lens.style.background = lightPreviewSlice(value, state.h, state.s);
+  }
+
   function renderTransform(): void {
     const intValue = Math.round(value);
     const offset = value - intValue;
@@ -168,6 +199,7 @@ export function createTape(opts: TapeOpts): TapeHandle {
       renderColors();
     }
     renderTransform();
+    renderLens();
     if (fireChange) opts.onChange(value);
   }
 
@@ -294,10 +326,11 @@ export function createTape(opts: TapeOpts): TapeHandle {
 
   renderColors();
   renderTransform();
+  renderLens();
 
   return {
     el,
-    rerenderSlices: renderColors,
+    rerenderSlices: () => { renderColors(); renderLens(); },
     getValue: () => value,
     destroy: () => {
       ac.abort();

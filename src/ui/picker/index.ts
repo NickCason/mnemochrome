@@ -130,14 +130,17 @@ export function mountPicker(
   }
 
   const axisOrder: Array<'h' | 's' | 'l'> = ['h', 's', 'l'];
-  // Per-axis density: HUE uses an 8px slot pitch with many more slots, so a
-  // visible window shows a meaningful color spectrum while keeping 1° precision.
-  // SAT and LIGHT keep the 32px pitch (~7 visible) which is plenty for a
-  // 100-unit range.
+  // All three tapes use the same dense slot pitch (6px = 1 unit) so the
+  // visible window shows ~42 units of context on every axis. The 32px lens
+  // overlay at center picks out the actual selected value at the same
+  // physical size for all tapes — direction in the gradient reads clearly
+  // and 1-unit precision stays intact.
+  const TAPE_PITCH = 6;
+  const TAPE_TOTAL_SLOTS = 49;
   const axisCfg: Record<'h' | 's' | 'l', { slotPitch: number; totalSlots: number }> = {
-    h: { slotPitch: 8,  totalSlots: 37 },
-    s: { slotPitch: 32, totalSlots: 15 },
-    l: { slotPitch: 32, totalSlots: 15 },
+    h: { slotPitch: TAPE_PITCH, totalSlots: TAPE_TOTAL_SLOTS },
+    s: { slotPitch: TAPE_PITCH, totalSlots: TAPE_TOTAL_SLOTS },
+    l: { slotPitch: TAPE_PITCH, totalSlots: TAPE_TOTAL_SLOTS },
   };
   const tapes: TapeHandle[] = axisOrder.map((axis) => {
     return createTape({

@@ -115,20 +115,28 @@ export function createTape(opts: TapeOpts): TapeHandle {
     'will-change:transform',
   ].join(';');
 
-  const innerMargin = pitch >= 24 ? 3 : 1;
+  // At dense pitches (≤10px) slots are too small for individual bar styling
+  // to read — they'd look like chunky pixel noise. Flush, full-width slots
+  // with no gaps make the strip read as a smooth color ribbon, with the lens
+  // overlay providing the discrete "selection" focal point. At coarser
+  // pitches we keep the rounded-bar styling.
+  const dense = pitch <= 10;
+  const innerMargin = dense ? 0 : 3;
   const slotHeight = pitch - innerMargin * 2;
-  const slotRadius = Math.min(5, Math.floor(slotHeight / 2));
+  const slotRadius = dense ? 0 : Math.min(5, Math.floor(slotHeight / 2));
+  const slotWidth = dense ? '100%' : '78%';
+  const slotShadow = dense ? 'none' : 'inset 0 0 0 1px rgba(0,0,0,0.22)';
 
   const slots: HTMLDivElement[] = [];
   for (let i = 0; i < totalSlots; i++) {
     const s = document.createElement('div');
     s.style.cssText = [
-      'width:78%',
+      `width:${slotWidth}`,
       `height:${slotHeight}px`,
       `margin:${innerMargin}px 0`,
       `border-radius:${slotRadius}px`,
       'flex-shrink:0',
-      'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.22)',
+      `box-shadow:${slotShadow}`,
     ].join(';');
     strip.appendChild(s);
     slots.push(s);
@@ -139,24 +147,23 @@ export function createTape(opts: TapeOpts): TapeHandle {
   el.appendChild(fadeBot);
 
   // Lens overlay: a 32px-tall element at the band center showing the live
-  // selected value at the same physical size as sat/light's centered slot.
-  // Only mounted on dense (small-pitch) tapes where the strip's individual
-  // slots are too small to read on their own — i.e. hue.
+  // selected value at the same physical size on every tape. The band overlay
+  // (drawn by the picker, spans all three tapes) provides the horizontal
+  // paper rules; the lens just fills its row with the selected colour.
   let lens: HTMLDivElement | null = null;
   if (pitch < SLOT_PITCH) {
     lens = document.createElement('div');
     lens.style.cssText = [
       'position:absolute',
-      'left:11%',
-      'right:11%',
+      'left:0',
+      'right:0',
       'top:50%',
       `height:${SLOT_PITCH}px`,
       `margin-top:-${SLOT_PITCH / 2}px`,
-      'border-radius:6px',
-      'box-shadow:0 0 0 1px rgba(236,230,218,0.9), inset 0 0 0 1px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.5)',
       'pointer-events:none',
-      'z-index:3',
+      'z-index:2',
       'will-change:background',
+      'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.25), 0 4px 10px rgba(0,0,0,0.35)',
     ].join(';');
     el.appendChild(lens);
   }

@@ -240,17 +240,22 @@ body {
   transform: translateY(100%);
   animation-name: shutterBot;
 }
+/* Close (0%→22%): ease-in — bars wait off-screen, slam into center.
+   Open  (52%→74%): mirror the close visually. Since the bars are visible
+   throughout the open phase (they start at centre), an ease-in curve there
+   reads as "hold then flash off". Use a balanced ease so the bars peel away
+   with visible momentum and the user sees a real reveal motion. */
 @keyframes shutterTop {
   0%   { transform: translateY(-100%); animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
   22%  { transform: translateY(0);     animation-timing-function: steps(1, end); }
-  52%  { transform: translateY(0);     animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
+  52%  { transform: translateY(0);     animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
   74%  { transform: translateY(-100%); animation-timing-function: steps(1, end); }
   100% { transform: translateY(-100%); }
 }
 @keyframes shutterBot {
   0%   { transform: translateY(100%); animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
   23%  { transform: translateY(0);    animation-timing-function: steps(1, end); }
-  54%  { transform: translateY(0);    animation-timing-function: cubic-bezier(0.55, 0, 0.78, 0); }
+  54%  { transform: translateY(0);    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
   76%  { transform: translateY(100%); animation-timing-function: steps(1, end); }
   100% { transform: translateY(100%); }
 }

@@ -19,15 +19,28 @@ async function generate(prompt) {
   const r = await fetch(`${HOST}/api/generate`, {
     method: 'POST',
     body: JSON.stringify({ model: MODEL, prompt, stream: false, options: { temperature: 0.2 } }),
+    signal: AbortSignal.timeout(120_000),
   });
   if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
   const d = await r.json();
+  if (typeof d.response !== 'string') {
+    throw new Error(`ollama: unexpected response shape: ${JSON.stringify(d).slice(0, 200)}`);
+  }
   return d.response.trim();
 }
 
 function extractCode(s) {
-  const m = s.match(/```(?:[a-z]+)?\n([\s\S]*?)```/);
-  return (m ? m[1] : s).trim();
+  const lines = s.split('\n');
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^```[a-z]*\s*$/.test(lines[i])) { start = i + 1; break; }
+  }
+  if (start === -1) return s.trim();
+  let end = lines.length;
+  for (let i = lines.length - 1; i >= start; i--) {
+    if (/^```\s*$/.test(lines[i])) { end = i; break; }
+  }
+  return lines.slice(start, end).join('\n').trim();
 }
 
 const initialPrompt = `You are steeLL-v1, a careful junior engineer. Write the contents of \`${outFile}\` per this spec. Output ONLY the file contents inside one fenced code block. No commentary.

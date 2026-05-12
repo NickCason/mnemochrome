@@ -14,28 +14,49 @@ export interface MagnifierHandle {
 }
 
 export function createMagnifier(parent: HTMLElement): MagnifierHandle {
-  const bubble = document.createElement('div');
-  bubble.style.cssText = [
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = [
     'position:absolute',
     `width:${SIZE}px`,
     `height:${SIZE}px`,
-    'border-radius:50%',
-    'background:var(--ink, #0E0E10)',
-    'border:2px solid rgba(236, 230, 218, 0.45)',
-    'box-shadow:0 8px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.6)',
     'pointer-events:none',
     'opacity:0',
     'transition:opacity 120ms ease',
     'z-index:50',
+    'left:0',
+    'top:0',
+    'will-change:transform, opacity',
+  ].join(';');
+
+  const circle = document.createElement('div');
+  circle.style.cssText = [
+    'position:absolute',
+    'inset:0',
+    'border-radius:50%',
+    'background:var(--ink, #0E0E10)',
+    'border:2px solid rgba(236, 230, 218, 0.45)',
+    'box-shadow:0 8px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.6)',
     'overflow:hidden',
     'display:flex',
     'flex-direction:column',
     'align-items:center',
     'justify-content:center',
     'gap:4px',
-    'left:0',
-    'top:0',
-    'will-change:transform, opacity',
+  ].join(';');
+
+  const nub = document.createElement('div');
+  nub.style.cssText = [
+    'position:absolute',
+    'left:50%',
+    'bottom:-7px',
+    'width:14px',
+    'height:14px',
+    'margin-left:-7px',
+    'background:var(--ink, #0E0E10)',
+    'border-right:2px solid rgba(236, 230, 218, 0.45)',
+    'border-bottom:2px solid rgba(236, 230, 218, 0.45)',
+    'transform:rotate(45deg)',
+    'z-index:-1',
   ].join(';');
 
   const slots: HTMLDivElement[] = [];
@@ -45,11 +66,13 @@ export function createMagnifier(parent: HTMLElement): MagnifierHandle {
     if (i === 2) {
       slot.style.boxShadow = '0 0 0 2px var(--paper, #ECE6DA), 0 0 0 3px rgba(0,0,0,0.6)';
     }
-    bubble.appendChild(slot);
+    circle.appendChild(slot);
     slots.push(slot);
   }
 
-  parent.appendChild(bubble);
+  wrapper.appendChild(circle);
+  wrapper.appendChild(nub);
+  parent.appendChild(wrapper);
 
   function renderSlices(value: number, axis: MagnifierAxis, state: HSL): void {
     const wrap = axis === 'h';
@@ -75,15 +98,15 @@ export function createMagnifier(parent: HTMLElement): MagnifierHandle {
       const localY = y - parentRect.top;
       const half = SIZE / 2;
       const bx = Math.max(EDGE_PAD + half, Math.min(parentRect.width - EDGE_PAD - half, localX));
-      const by = localY - OFFSET_ABOVE - half;
-      bubble.style.transform = `translate(${bx - half}px, ${by}px)`;
-      bubble.style.opacity = '1';
+      const by = Math.max(EDGE_PAD, localY - OFFSET_ABOVE - half);
+      wrapper.style.transform = `translate(${bx - half}px, ${by}px)`;
+      wrapper.style.opacity = '1';
     },
     hide: () => {
-      bubble.style.opacity = '0';
+      wrapper.style.opacity = '0';
     },
     destroy: () => {
-      bubble.remove();
+      wrapper.remove();
     },
   };
 }

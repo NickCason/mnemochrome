@@ -76,8 +76,11 @@ export function bloomTransition(
   const done = new Promise<void>((resolve) => {
     timer = window.setTimeout(() => {
       swapOnce();
-      // One frame after swap so the new scene's layout is established
-      // before we lift the overlay.
+      // mountReveal's innerHTML = '' just detached our overlay. Re-attach
+      // it (still at clip-path 150%, fully covering) so the swap is
+      // hidden behind the bloom for one more frame, then lift it on the
+      // next rAF after the new scene has painted.
+      root.appendChild(overlay);
       requestAnimationFrame(() => {
         overlay.remove();
         resolve();
@@ -274,6 +277,14 @@ export function washBloomTransition(
   const done = new Promise<void>((resolve) => {
     washTimer = window.setTimeout(() => {
       swapOnce();
+      // The reveal scene's mountReveal runs root.innerHTML = '' which just
+      // detached the wash overlay. Re-attach it so it continues to cover
+      // the now-mounted reveal scene until the bloom grows over it —
+      // without this re-append the user briefly sees the bare reveal
+      // (target colour + countdown ring) for a frame before the bloom
+      // starts covering, which reads as "loading bar flashes in".
+      root.appendChild(wash);
+
       // Bloom overlay sits above the wash. The wash is ink, the bloom
       // reveals the new colour from the centre — outside the bloom's clip
       // the wash continues to cover the (new) reveal scene beneath.

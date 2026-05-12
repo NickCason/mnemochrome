@@ -63,12 +63,17 @@ export function mountPicker(
 
   parent.appendChild(root);
 
-  const haptics = createHaptics(() => loadState().settings.haptics);
+  const hapticsEnabled = loadState().settings.haptics;
+  const haptics = createHaptics(() => hapticsEnabled);
   const magnifier = createMagnifier(parent);
 
-  function updateOutput(): void {
+  function renderOutput(): void {
     swatch.style.background = trueColor(state);
     readout.textContent = `${Math.round(state.h)}° · ${Math.round(state.s)}% · ${Math.round(state.l)}%`;
+  }
+
+  function updateOutput(): void {
+    renderOutput();
     onChange(hslToHex(state));
   }
 
@@ -92,7 +97,7 @@ export function mountPicker(
 
   tapes.forEach((t) => tapesEl.appendChild(t.el));
 
-  updateOutput();
+  renderOutput();
 
   return {
     getHex: () => hslToHex(state),

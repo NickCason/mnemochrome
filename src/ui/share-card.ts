@@ -5,7 +5,7 @@
 // the entire card is drawn to an offscreen canvas, so any chrome that happens
 // to be on screen (e.g. the Share button itself) cannot leak into the export.
 
-import { axisCloseness } from '../color';
+import { axisCloseness, hexToHsl, type HSL } from '../color';
 
 const PAPER = '#ECE6DA';
 const MUTE = '#7A7670';
@@ -28,6 +28,9 @@ async function ensureFontsLoaded(): Promise<void> {
     document.fonts.load(`500 26px ${INTER}`),
     document.fonts.load(`500 22px ${INTER}`),
     document.fonts.load(`400 22px ${INTER}`),
+    document.fonts.load(`500 38px ${INTER}`),
+    document.fonts.load(`400 28px ${INTER}`),
+    document.fonts.load(`500 24px ${INTER}`),
   ]);
   await document.fonts.ready;
 }
@@ -75,6 +78,68 @@ function drawRoundedRect(
   ctx.closePath();
 }
 
+// Mirrors the in-app grade-screen swatch chip: label / hex / HSL stacked,
+// in a glass capsule that reads on any background color.
+function drawSwatchChip(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  label: string,
+  hex: string,
+  hsl: HSL
+): void {
+  const hStr = hsl.s < 1.5 ? '—' : `${Math.round(hsl.h)}°`;
+  const hslText = `H ${hStr}   ·   S ${Math.round(hsl.s)}%   ·   L ${Math.round(hsl.l)}%`;
+  const hexText = hex.toUpperCase();
+
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+
+  // Measure widest line so the capsule fits its tightest content.
+  ctx.font = `500 24px ${INTER}`;
+  const labW = ctx.measureText(label).width;
+  ctx.font = `500 38px ${INTER}`;
+  const hexW = ctx.measureText(hexText).width;
+  ctx.font = `400 28px ${INTER}`;
+  const hslW = ctx.measureText(hslText).width;
+
+  const maxLineW = Math.max(labW, hexW, hslW);
+  const padX = 44;
+  const padY = 28;
+  const lineGap = 14;
+  const hLabel = 28;
+  const hHex = 44;
+  const hHsl = 32;
+  const chipW = maxLineW + padX * 2;
+  const chipH = padY * 2 + hLabel + lineGap + hHex + lineGap + hHsl;
+  const x = cx - chipW / 2;
+  const y = cy - chipH / 2;
+  const radius = 28;
+
+  ctx.fillStyle = 'rgba(14, 14, 16, 0.78)';
+  drawRoundedRect(ctx, x, y, chipW, chipH, radius);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(236, 230, 218, 0.12)';
+  ctx.lineWidth = 2;
+  drawRoundedRect(ctx, x, y, chipW, chipH, radius);
+  ctx.stroke();
+
+  let lineCy = y + padY + hLabel / 2;
+  ctx.font = `500 24px ${INTER}`;
+  ctx.fillStyle = MUTE;
+  ctx.fillText(label, cx, lineCy);
+
+  lineCy += hLabel / 2 + lineGap + hHex / 2;
+  ctx.font = `500 38px ${INTER}`;
+  ctx.fillStyle = PAPER;
+  ctx.fillText(hexText, cx, lineCy);
+
+  lineCy += hHex / 2 + lineGap + hHsl / 2;
+  ctx.font = `400 28px ${INTER}`;
+  ctx.fillStyle = MUTE;
+  ctx.fillText(hslText, cx, lineCy);
+}
+
 export async function renderShareCard(
   targetHex: string,
   guessHex: string,
@@ -93,6 +158,11 @@ export async function renderShareCard(
   ctx.fillRect(0, 0, W, H / 2);
   ctx.fillStyle = guessHex;
   ctx.fillRect(0, H / 2, W, H / 2);
+
+  // Swatch chips: vertically centered in each swatch's visible area outside
+  // the central glass card. Mirrors the in-app grade screen.
+  drawSwatchChip(ctx, W / 2, 290, 'ORIGINAL', targetHex, hexToHsl(targetHex));
+  drawSwatchChip(ctx, W / 2, H - 290, 'YOUR PICK', guessHex, hexToHsl(guessHex));
 
   const axes = axisCloseness(targetHex, guessHex);
 

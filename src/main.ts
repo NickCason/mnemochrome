@@ -5,6 +5,7 @@ import { mountTitle } from './scenes/title';
 import { mountReveal } from './scenes/reveal';
 import { mountMatch } from './scenes/match';
 import { mountGrade } from './scenes/grade';
+import { splash, shouldSkipSplash } from './scenes/splash';
 import { hslToHex, randomTarget, type HSL } from './color';
 import {
   bloomTransition,
@@ -91,4 +92,21 @@ function grade(target: HSL, targetHex: string, guessHex: string) {
   );
 }
 
-title();
+// First-mount routing: cold launch runs the splash unless the user
+// has Reduce Motion enabled, in which case title mounts directly.
+if (shouldSkipSplash()) {
+  title();
+} else {
+  splash(root, {
+    onComplete: (wordmarkEl) => {
+      isFirst = true; // ensure go() takes the direct-mount branch
+      go(() =>
+        mountTitle(
+          root,
+          () => goReveal('first'),
+          { skipEntrance: true, existingWordmark: wordmarkEl },
+        ),
+      );
+    },
+  });
+}

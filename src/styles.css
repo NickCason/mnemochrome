@@ -90,6 +90,66 @@ body {
   50%      { opacity: 1; transform: translateY(0) scale(1.06); filter: brightness(1.12); }
 }
 
+/* ============================================================
+   Splash screen — one-shot cold-launch animation. Wraps the
+   wordmark in a full-viewport panel that washes from ink to a
+   random saturated hue and back to ink, then hands the wordmark
+   element off to the title scene without re-animating it.
+   ============================================================ */
+.splash-root {
+  position: fixed;
+  inset: 0;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  /* No baked transition — splash.ts sets element.style.transition
+     per phase (ease-out 300ms wash-in, ease-in 400ms wash-out) so
+     timing stays authoritative in one place. */
+}
+
+.splash-root .wordmark {
+  /* Shares typography with title; only the legibility shadow is
+     splash-specific. */
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 0 1px rgba(0, 0, 0, 0.4);
+  transition: text-shadow 400ms ease;
+  opacity: 0;
+  transition-property: text-shadow, opacity;
+  transition-duration: 400ms;
+}
+
+.splash-root.is-visible .wordmark {
+  opacity: 1;
+}
+
+.splash-root.is-washing-out .wordmark {
+  text-shadow: none;
+}
+
+/* O-glow one-shot pulse (added/removed by splash.ts at T~600ms). */
+.splash-root .wordmark .o.o-splash-pulse {
+  animation: splashOPulse 250ms ease-out;
+}
+@keyframes splashOPulse {
+  0%   { text-shadow: 0 0 0 var(--accent); }
+  50%  { text-shadow: 0 0 14px var(--accent); }
+  100% { text-shadow: 0 0 0 var(--accent); }
+}
+
+/* Reduce-motion already bypasses splash in JS, but if .splash-root
+   ever ends up rendered under reduce, kill its motion. */
+@media (prefers-reduced-motion: reduce) {
+  .splash-root,
+  .splash-root .wordmark,
+  .splash-root .wordmark .o.o-splash-pulse {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 .label-micro {
   font-size: 11px;
   letter-spacing: 0.14em;

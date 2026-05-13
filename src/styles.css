@@ -117,8 +117,8 @@ body {
     0 0 1px rgba(0, 0, 0, 0.4);
   opacity: 0;
   transition-property: text-shadow, opacity;
-  transition-duration: 400ms;
-  transition-timing-function: ease;
+  transition-duration: 400ms, 400ms;
+  transition-timing-function: ease-in, ease-out;
 }
 
 .splash-root.is-visible .wordmark {

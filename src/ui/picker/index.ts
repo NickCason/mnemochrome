@@ -2,16 +2,16 @@ import type { HSL } from '../../color';
 import { hslToHex } from '../../color';
 import { loadState } from '../../state';
 import { createHaptics } from './haptics';
-import { createMagnifier } from './magnifier';
-import { createTape, type TapeHandle, SLOT_PITCH } from './tape';
+import { createHueStrip, type HueStripHandle } from './hue-strip';
+import { createSLPad, type SLPadHandle } from './sl-pad';
 import { trueColor } from './render';
 
 export interface PickerHandle {
   getHex: () => string;
   getHSL: () => HSL;
-  /** Wrapper around readout + labels + tapes capsule. Exposed so the match
-   *  scene can slide it off-screen during the lock-in transition while the
-   *  swatch stays put. */
+  /** Wrapper around readout + labels + hue strip + sl pad. Exposed so the
+   *  match scene can slide it off-screen during the lock-in transition while
+   *  the swatch stays put. */
   controlsEl: HTMLElement;
   destroy: () => void;
 }
@@ -42,19 +42,20 @@ export function mountPicker(
   ].join(';');
   root.appendChild(swatch);
 
-  // Controls wrapper — readout + axis labels + tapes capsule. Grouped so the
-  // match scene can slide the whole bottom region off in one transform during
-  // the lock-in transition while the swatch stays put.
   const controls = document.createElement('div');
   controls.style.cssText = [
     'display:flex',
     'flex-direction:column',
+    'gap:10px',
+    'padding:12px 16px 0',
     'will-change:transform',
+    'flex:1 1 auto',
+    'min-height:0',
   ].join(';');
 
   const readout = document.createElement('div');
   readout.style.cssText = [
-    'padding:10px 0 6px',
+    'padding:4px 0 2px',
     'text-align:center',
     "font-family:'Inter Variable',system-ui,sans-serif",
     'font-size:13px',
@@ -64,105 +65,64 @@ export function mountPicker(
   ].join(';');
   controls.appendChild(readout);
 
-  const labels = document.createElement('div');
-  labels.style.cssText = 'display:flex;padding:0 28px 8px;';
-  for (const text of ['HUE', 'SAT', 'LIGHT']) {
-    const span = document.createElement('div');
-    span.className = 'label-micro';
-    span.style.flex = '1';
-    span.style.textAlign = 'center';
-    labels.appendChild(span);
-    span.textContent = text;
-  }
-  controls.appendChild(labels);
+  const hueLabel = document.createElement('div');
+  hueLabel.className = 'label-micro';
+  hueLabel.style.textAlign = 'center';
+  hueLabel.textContent = 'HUE';
+  controls.appendChild(hueLabel);
 
-  // Unified tapes container — one rounded capsule wrapping all three tapes,
-  // with a horizontal selection band overlay spanning all three at the
-  // vertical center. iOS-picker style.
-  const tapesWrap = document.createElement('div');
-  tapesWrap.style.cssText = [
-    'position:relative',
-    'flex:0 0 252px',
-    'margin:0 16px',
-    'border:1px solid rgba(236,230,218,0.18)',
-    'border-radius:16px',
-    'overflow:hidden',
-    'background:rgba(14,14,16,0.45)',
-    'box-shadow:0 6px 22px rgba(0,0,0,0.35), inset 0 1px 0 rgba(236,230,218,0.04)',
-  ].join(';');
+  const padLabel = document.createElement('div');
+  padLabel.className = 'label-micro';
+  padLabel.style.textAlign = 'center';
+  padLabel.style.marginTop = '6px';
+  padLabel.textContent = 'SAT × LIGHT';
 
-  const tapesRow = document.createElement('div');
-  tapesRow.style.cssText = 'display:flex;height:100%;';
-  tapesWrap.appendChild(tapesRow);
-
-  // Selection band — two thin paper-colored rules framing the center row.
-  const band = document.createElement('div');
-  band.style.cssText = [
-    'position:absolute',
-    'left:0',
-    'right:0',
-    'top:50%',
-    `height:${SLOT_PITCH}px`,
-    `margin-top:${-SLOT_PITCH / 2}px`,
-    'border-top:1px solid rgba(236,230,218,0.55)',
-    'border-bottom:1px solid rgba(236,230,218,0.55)',
-    'pointer-events:none',
-    'z-index:3',
-  ].join(';');
-  tapesWrap.appendChild(band);
-
-  controls.appendChild(tapesWrap);
-  root.appendChild(controls);
-  parent.appendChild(root);
-
+  // Mount strip + pad. The lens needs to float above the strip without being
+  // clipped, so we anchor it to the picker root.
   const hapticsEnabled = loadState().settings.haptics;
   const haptics = createHaptics(() => hapticsEnabled);
-  const magnifier = createMagnifier(parent);
 
   function renderOutput(): void {
     swatch.style.background = trueColor(state);
-    readout.textContent = `${Math.round(state.h)}° · ${Math.round(state.s)}% · ${Math.round(state.l)}%`;
+    readout.textContent =
+      `${Math.round(state.h)}° · ${Math.round(state.s)}% · ${Math.round(state.l)}%`;
   }
 
-  function updateOutput(): void {
-    renderOutput();
-    onChange(hslToHex(state));
-  }
+  let hueStrip: HueStripHandle;
+  let pad: SLPadHandle;
 
-  const axisOrder: Array<'h' | 's' | 'l'> = ['h', 's', 'l'];
-  // Hue needs much higher visual density than sat/light because its range
-  // (360°) is 3.6× wider and adjacent hues at narrow pitches blend so the
-  // gradient direction reads more like a smooth ribbon than discrete bars.
-  // At pitch 3, the visible window spans ~84° of spectrum — roughly a
-  // quarter of the wheel — so the user can clearly see red→orange→yellow
-  // (or any analogous arc) at a glance. 1° precision is preserved (each
-  // slot is still one unit). The 32px lens at center picks out the actual
-  // selected value at a readable size regardless of pitch.
-  const axisCfg: Record<'h' | 's' | 'l', { slotPitch: number; totalSlots: number }> = {
-    h: { slotPitch: 3,  totalSlots: 105 },
-    s: { slotPitch: 6,  totalSlots: 49  },
-    l: { slotPitch: 6,  totalSlots: 49  },
-  };
-  const tapes: TapeHandle[] = axisOrder.map((axis) => {
-    return createTape({
-      axis,
-      initialValue: state[axis],
-      onChange: (v) => {
-        state[axis] = v;
-        updateOutput();
-        for (let i = 0; i < axisOrder.length; i++) {
-          if (axisOrder[i] !== axis) tapes[i].rerenderSlices();
-        }
-      },
-      haptics,
-      magnifier,
-      getState: () => state,
-      slotPitch: axisCfg[axis].slotPitch,
-      totalSlots: axisCfg[axis].totalSlots,
-    });
+  hueStrip = createHueStrip({
+    initial: state.h,
+    onChange: (h) => {
+      state.h = h;
+      renderOutput();
+      onChange(hslToHex(state));
+      pad.rerender();
+    },
+    haptics,
+    getState: () => state,
+    lensParent: root,
   });
+  controls.appendChild(hueStrip.el);
 
-  tapes.forEach((t) => tapesRow.appendChild(t.el));
+  controls.appendChild(padLabel);
+
+  pad = createSLPad({
+    initialS: state.s,
+    initialL: state.l,
+    onChange: ({ s, l }) => {
+      state.s = s;
+      state.l = l;
+      renderOutput();
+      onChange(hslToHex(state));
+    },
+    haptics,
+    getState: () => state,
+  });
+  controls.appendChild(pad.el);
+
+  root.appendChild(controls);
+  parent.appendChild(root);
 
   renderOutput();
 
@@ -171,8 +131,8 @@ export function mountPicker(
     getHSL: () => ({ ...state }),
     controlsEl: controls,
     destroy: () => {
-      tapes.forEach((t) => t.destroy());
-      magnifier.destroy();
+      hueStrip.destroy();
+      pad.destroy();
       root.remove();
     },
   };

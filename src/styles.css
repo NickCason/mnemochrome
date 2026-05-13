@@ -117,7 +117,7 @@ body {
     0 0 1px rgba(0, 0, 0, 0.4);
   opacity: 0;
   transition-property: text-shadow, opacity;
-  transition-duration: 400ms, 400ms;
+  transition-duration: 400ms, 300ms;
   transition-timing-function: ease-in, ease-out;
 }
 

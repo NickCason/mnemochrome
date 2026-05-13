@@ -9,6 +9,7 @@
 import { scoreMatch, axisCloseness, hexToHsl, type HSL } from '../color';
 import { loadState, recordRound } from '../state';
 import { shareRound } from '../ui/share-card';
+import { reportPerfect } from '../ui/perfect-ping';
 
 // Staggered landing timeline (ms from scene mount).
 const TIMING = {
@@ -31,7 +32,18 @@ export function mountGrade(
   const pct = scoreMatch(targetHex, guessHex);
   const axes = axisCloseness(targetHex, guessHex);
   recordRound(pct);
-  const haptic = loadState().settings.haptics && 'vibrate' in navigator;
+  const state = loadState();
+  const haptic = state.settings.haptics && 'vibrate' in navigator;
+
+  if (pct === 100) {
+    reportPerfect({
+      target: targetHex,
+      guess: guessHex,
+      pb: state.pb,
+      total: state.total,
+      viewMs: state.settings.viewTimeMs,
+    });
+  }
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const top = document.createElement('div');

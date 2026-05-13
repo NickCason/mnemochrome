@@ -1,0 +1,17 @@
+name = "mnemochrome-perfect"
+main = "src/worker.js"
+compatibility_date = "2025-05-01"
+
+# Secrets (set via `wrangler secret put`):
+#   PUSHOVER_USER  - your Pushover user key
+#   PUSHOVER_TOKEN - the app token for Mnemochrome on Pushover
+
+[vars]
+ALLOWED_ORIGIN = "https://nickcason.github.io"
+RATE_LIMIT_PER_MINUTE = "30"
+# Pushover built-in. Swap to a custom sound name if you upload one to your
+# Pushover app. Options: bugle, cosmic, magic, classical, gamelan, intermission.
+PUSHOVER_SOUND = "bugle"
+
+[observability]
+enabled = true

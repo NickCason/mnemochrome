@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pickSplashHsl } from './splash';
+import { pickSplashHsl, shouldSkipSplash } from './splash';
 
 describe('pickSplashHsl', () => {
   it('never produces a hue in the magenta exclusion band [300, 340]', () => {
@@ -27,8 +27,6 @@ describe('pickSplashHsl', () => {
     }
   });
 });
-
-import { shouldSkipSplash } from './splash';
 
 describe('shouldSkipSplash', () => {
   const setMatchMedia = (matches: boolean) => {

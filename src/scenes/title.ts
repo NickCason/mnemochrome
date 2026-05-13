@@ -14,7 +14,18 @@ const O_INDICES = new Set([4, 8]); // positions of the two o's
 const LETTER_STAGGER_MS = 50;
 const LETTER_ENTRANCE_MS = 600;
 
-export function mountTitle(root: HTMLElement, onPlay: () => void): () => void {
+export interface TitleOptions {
+  /** Skip the wordmark letter-entrance animation; spans start settled. */
+  skipEntrance?: boolean;
+  /** Adopt an existing wordmark element (from splash) instead of building a new one. */
+  existingWordmark?: HTMLElement;
+}
+
+export function mountTitle(
+  root: HTMLElement,
+  onPlay: () => void,
+  opts: TitleOptions = {},
+): () => void {
   root.innerHTML = '';
   root.style.background = 'var(--ink)';
 
@@ -31,20 +42,36 @@ export function mountTitle(root: HTMLElement, onPlay: () => void): () => void {
   header.style.cssText =
     'display:flex;flex-direction:column;align-items:center;gap:18px;';
 
-  // Build the wordmark as individual <span> letters so each can carry its
-  // own staggered entrance animation. The two o's get a `.o` class for the
-  // magenta tint and the post-entrance breath cycle.
-  const wordmark = document.createElement('h1');
-  wordmark.className = 'wordmark';
-  const letterSpans: HTMLSpanElement[] = [];
-  [...WORDMARK_TEXT].forEach((ch, i) => {
-    const span = document.createElement('span');
-    span.textContent = ch;
-    if (O_INDICES.has(i)) span.classList.add('o');
-    span.style.animationDelay = `${i * LETTER_STAGGER_MS}ms`;
-    letterSpans.push(span);
-    wordmark.appendChild(span);
-  });
+  // Wordmark: either adopt one passed in (from splash) or build fresh.
+  // When adopting, ensure spans are in their settled state so they don't
+  // snap back to the base CSS (.wordmark span: opacity:0; translateY(8px)).
+  let wordmark: HTMLElement;
+  let letterSpans: HTMLSpanElement[];
+  if (opts.existingWordmark) {
+    wordmark = opts.existingWordmark;
+    letterSpans = Array.from(
+      wordmark.querySelectorAll<HTMLSpanElement>('span'),
+    );
+  } else {
+    wordmark = document.createElement('h1');
+    wordmark.className = 'wordmark';
+    letterSpans = [];
+    [...WORDMARK_TEXT].forEach((ch, i) => {
+      const span = document.createElement('span');
+      span.textContent = ch;
+      if (O_INDICES.has(i)) span.classList.add('o');
+      if (opts.skipEntrance) {
+        // Settle the span immediately, no entrance keyframe.
+        span.style.opacity = '1';
+        span.style.transform = 'translateY(0)';
+        span.style.animation = 'none';
+      } else {
+        span.style.animationDelay = `${i * LETTER_STAGGER_MS}ms`;
+      }
+      letterSpans.push(span);
+      wordmark.appendChild(span);
+    });
+  }
 
   const hueStrip = document.createElement('div');
   hueStrip.className = 'hue-strip';
@@ -159,15 +186,19 @@ export function mountTitle(root: HTMLElement, onPlay: () => void): () => void {
     };
   }
 
-  // Schedule the breath cycle on the o's to begin after their entrance
-  // animation finishes (entrance ~600ms, last o starts at index 8 → delay 400ms).
+  // Schedule the breath cycle on the o's. Normally we wait for the
+  // entrance animation to land. When entrance is skipped (e.g., the
+  // wordmark was handed in from splash), breath can start immediately.
+  const breathStartDelay = (i: number): number =>
+    opts.skipEntrance ? 0 : i * LETTER_STAGGER_MS + LETTER_ENTRANCE_MS;
+
   const timers: number[] = [];
   letterSpans.forEach((span, i) => {
     if (!O_INDICES.has(i)) return;
     timers.push(
       window.setTimeout(
         () => span.classList.add('o-breath'),
-        i * LETTER_STAGGER_MS + LETTER_ENTRANCE_MS,
+        breathStartDelay(i),
       ),
     );
   });

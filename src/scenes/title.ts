@@ -49,6 +49,12 @@ export function mountTitle(
   let letterSpans: HTMLSpanElement[];
   if (opts.existingWordmark) {
     wordmark = opts.existingWordmark;
+    // Defensive: strip any splash-specific classes that may linger. Splash
+    // already removes these at handoff, but this keeps title self-sufficient
+    // if splash's contract ever changes.
+    wordmark
+      .querySelectorAll<HTMLElement>('.o-splash-pulse')
+      .forEach((el) => el.classList.remove('o-splash-pulse'));
     letterSpans = Array.from(
       wordmark.querySelectorAll<HTMLSpanElement>('span'),
     );

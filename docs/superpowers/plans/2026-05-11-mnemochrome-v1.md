@@ -8,15 +8,15 @@
 
 **Tech Stack:** Vite 5+, TypeScript 5+, vite-plugin-pwa, culori (color math), sharp (build-time icon generation), Vitest (tests). Deploy via GitHub Actions → Pages.
 
-**Co-author:** Each task is tagged with `[claude]`, `[steeLL-v1]`, or `[mixed]` indicating which model produces the bulk of the code. steeLL-v1 = `qwen2.5-coder:7b` on Ollama at `http://100.122.121.18:11434` (node8 of personal tailnet, passwordless SSH). steeLL-v1 commits include a `Co-Authored-By: steeLL-v1 <steeLL-v1@local.ai>` trailer. Claude reviews steeLL-v1 output before commit. The invocation script set up in Task 0 implements the 2-iteration self-review loop.
+**Co-author:** Each task is tagged with `[claude]`, `[steeLL-v1]`, or `[mixed]` indicating which model produces the bulk of the code. steeLL-v1 = `qwen2.5-coder:7b` on Ollama at `http://<tailnet-ip>:11434` (node8 of personal tailnet, passwordless SSH). steeLL-v1 commits include a `Co-Authored-By: steeLL-v1 <steeLL-v1@local.ai>` trailer. Claude reviews steeLL-v1 output before commit. The invocation script set up in Task 0 implements the 2-iteration self-review loop.
 
-**Working directory:** `/Users/nickcason/DevSpace/Personal/mnemochrome`
+**Working directory:** `~/DevSpace/Personal/mnemochrome`
 
 ---
 
 ## Task 0: steeLL-v1 invocation script `[claude]`
 
-Implements `scripts/steeLL-v1.mjs` and `scripts/steeLL-v1-task.sh`. The Node script POSTs to `http://100.122.121.18:11434/api/generate` (or `$OLLAMA_HOST`) with `qwen2.5-coder:7b`, temperature 0.2, runs up to 2 self-review iterations stopping early on convergence, and writes the extracted code to the output file. Shell wrapper uses `set -euo pipefail` and pipes stdin through. Both chmod +x. Git initialized on `main`. Smoke-tested with a simple "write an add function" prompt.
+Implements `scripts/steeLL-v1.mjs` and `scripts/steeLL-v1-task.sh`. The Node script POSTs to `http://<tailnet-ip>:11434/api/generate` (or `$OLLAMA_HOST`) with `qwen2.5-coder:7b`, temperature 0.2, runs up to 2 self-review iterations stopping early on convergence, and writes the extracted code to the output file. Shell wrapper uses `set -euo pipefail` and pipes stdin through. Both chmod +x. Git initialized on `main`. Smoke-tested with a simple "write an add function" prompt.
 
 ✅ **Completed.** See commits `aaddf6c` (initial) and `3baf857` (review fixes: guarded `d.response`, multiline-fence extraction, 120s fetch timeout).
 
@@ -1259,7 +1259,7 @@ npm run dev
 
 - [ ] **Step 2: Share URL**
 
-`http://nicks-macbook-air.taild99f50.ts.net:5173`
+`http://<host>.<tailnet>.ts.net:5173`
 
 Three full rounds. Verify:
 - Picker drag feels responsive
@@ -1277,5 +1277,5 @@ Three full rounds. Verify:
 - Run `npx vitest run` after Tasks 4 and 5; both pass before continuing.
 - After Task 12, the game is playable end-to-end. 13–19 are deploy/polish.
 - For every `[steeLL-v1]` task, Claude reads the generated file before committing and edits if defective.
-- If `http://100.122.121.18:11434` is unreachable: `ssh node8 'sudo systemctl restart ollama'`, then retry.
+- If `http://<tailnet-ip>:11434` is unreachable: `ssh node8 'sudo systemctl restart ollama'`, then retry.
 - Don't skip TDD on `src/color.ts` and `src/state.ts` — correctness-critical.

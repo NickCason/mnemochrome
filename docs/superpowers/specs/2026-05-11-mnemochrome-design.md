@@ -170,7 +170,7 @@ Each scene is a function that takes a root element and a callback for "scene don
   4. `actions/deploy-pages` publishes the artifact
 - Pages source in repo settings: "GitHub Actions" (not "Deploy from a branch").
 - **Vite base path:** `/mnemochrome/` for Pages.
-- **Dev:** `npm run dev` runs `vite --host 0.0.0.0`. Accessible across the tailnet at `http://nicks-macbook-air.taild99f50.ts.net:5173`. (HTTP-only in dev — PWA install requires HTTPS, so install-testing happens against the deployed Pages URL.)
+- **Dev:** `npm run dev` runs `vite --host 0.0.0.0`. Accessible across the tailnet at `http://<host>.<tailnet>.ts.net:5173`. (HTTP-only in dev — PWA install requires HTTPS, so install-testing happens against the deployed Pages URL.)
 
 ## Repo
 
@@ -184,7 +184,7 @@ A local AI co-developer participates on appropriately-scoped tasks.
 
 - **Co-author name (commit trailer):** `steeLL-v1`
 - **Model:** `qwen2.5-coder:7b` via Ollama
-- **Host:** node8 of personal tailnet — `http://100.122.121.18:11434`
+- **Host:** node8 of personal tailnet — `http://<tailnet-ip>:11434`
 - **Access:** SSH passwordless, sudo passwordless
 
 **Authorship rule:** any commit where steeLL-v1 wrote or substantively edited the code includes a `Co-Authored-By: steeLL-v1 <steeLL-v1@local.ai>` trailer alongside the standard Claude trailer.

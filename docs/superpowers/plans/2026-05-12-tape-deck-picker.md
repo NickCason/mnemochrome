@@ -938,11 +938,11 @@ If the line isn't visible, run `curl -sI http://localhost:5173 | head -1` — ex
 
 - [ ] **Step 4: Push to ntfy**
 
-The tailnet URL for this machine is `http://nicks-macbook-air.taild99f50.ts.net:5173`.
+The tailnet URL for this machine is `http://<host>.<tailnet>.ts.net:5173`.
 
 Run:
 ```bash
-curl -d "Tape-deck picker ready to test: http://nicks-macbook-air.taild99f50.ts.net:5173 — Tap to play → reach the Match scene to use the new picker." ntfy.sh/nickcason-claude-9f2a
+curl -d "Tape-deck picker ready to test: http://<host>.<tailnet>.ts.net:5173 — Tap to play → reach the Match scene to use the new picker." ntfy.sh/nickcason-claude-9f2a
 ```
 Expected: returns a JSON message receipt.
 

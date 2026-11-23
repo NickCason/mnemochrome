@@ -618,7 +618,7 @@ TAILNET_HOST=$(tailscale status --self --json | python3 -c "import json,sys; pri
 echo "http://${TAILNET_HOST}:5173/mnemochrome/"
 ```
 
-Expected: `http://nicks-macbook-air.taild99f50.ts.net:5173/mnemochrome/` (or similar).
+Expected: `http://<host>.<tailnet>.ts.net:5173/mnemochrome/` (or similar).
 
 - [ ] **Step 3: msgme the URL to Nick's phone for testing**
 

@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-const HOST = process.env.OLLAMA_HOST || 'http://100.122.121.18:11434';
+const HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
 const MODEL = 'qwen2.5-coder:7b';
 const [, , taskName, outFile] = process.argv;
 if (!taskName || !outFile) {
